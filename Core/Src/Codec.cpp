@@ -5,7 +5,10 @@
  *      Author: Ken
  */
 
-#include "Codec.h"
+#include "codec.h"
+#include "i2c.h"
+#include "gpio.h"
+#include "i2s.h"
 
 Codec::Codec() {
 	// TODO Auto-generated constructor stub
@@ -16,16 +19,26 @@ Codec::~Codec() {
 	// TODO Auto-generated destructor stub
 }
 
-uint8_t Codec::init() {
+uint8_t Codec::init(int16_t * buffer, size_t bufferSize) {
 	uint8_t status = 0;
 	HAL_GPIO_WritePin(CODEC_RESET_GPIO_Port, CODEC_RESET_Pin, GPIO_PIN_SET);
 	// Address 4: Power Control 2, Data: 10101111 (Headphone on always, speakers off always)
 	status += write(0x04, 0xaf);
 	// Address 6: Interface Control 2, Data: 00000111 (Slave mode, normal polarity (doesn't matter), DSP mode off, I2S Format, 16bit data)
 	status += write(0x06, 0x07);
+	
+	// Manufacturer provided initialization
+	status += write(0x00, 0x99);
+    status += write(0x47, 0x80);
+    status += write(0x32, 0xBB);
+    status += write(0x32, 0x3B);
+    status += write(0x00, 0x00);
+
+	HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)buffer, bufferSize);
+	
 	// Address 2: Power Control 1, Data: 10011110 (Powered up)
 	status += write(0x02, 0x9e);
-
+	
 	return status;
 }
 

@@ -16,7 +16,9 @@ REF: [Youtube Video on I2C by GreatScott!](https://www.youtube.com/watch?v=_fgWQ
 
 I2C is similar to MIDI signals: it is a protocol to send address and data information.
 
-It consists of two lines: SCL, the clock, and SDA, the data. Both sides, the master and the slave, use a **Open Drain** setup, which lets either side pull the line to 0. This technique is used to stop the clock when a device is busy by pinning it to 0, or to signal that it is ready by pulling down SDA.
+It consists of two lines: SCL, the clock, and SDA, the data. Both sides, the master and the slave, use a **Open Drain** setup, which lets either side pull the line to 0. This technique is used to stop the clock when a device is busy by pinning it to 0, or to signal that it is ready by pulling down SDA. 
+
+They can also be pulled back up to 3.3V by a pull-up resistor. This is a disadvantage over SPI protocol, as the pull-up resistor is slower than transistors pushing voltage.
 
 ### Start and End
 
@@ -100,8 +102,8 @@ As the data sheet states:
 This boils down to:
 
 1. Use a Pin D4 as GPIO to output High to power the chip (steps 1, 2)
-2. Send all configuration I2C messages before setting the message to set Power Control 1 (step 3)
-3. Make sure the chip is getting a stable clock signal. MCLK: high speed clock from STM32, SCLK: bit-rate clock, LRCK: Sample rate clock. These must be going before starting the chip. (step 5)
+2. Send all configuration I2C messages before setting the message to set Power Control 1 (step 3), and send manufuacturer provided initiazlizatin data to reserved registers (step 4).
+3. Make sure the chip is getting a stable clock signal. MCLK: high speed clock from STM32, SCLK: bit-rate clock, LRCK: Sample rate clock. These must be going before starting the chip. This means starting I2S to send the MCLK, so run `HAL_I2S_TRANSMIT_DMA` to start i2s communication (step 5).
 4. Set Power Control 1 register to 0x9E to start the chip (step 6)
 
 All the clocks are handled by I2S, a separate protocol that handles the audio data. These are set up in CubeMX and pretty much automatically handled by it.
@@ -109,17 +111,26 @@ All the clocks are handled by I2S, a separate protocol that handles the audio da
 In this program, this process is bundled into the [Codec class](Core/Src/Codec.cpp):
 
 ```cpp
-// Codec.cpp 19-39
-uint8_t Codec::init() {
+uint8_t Codec::init(int16_t * buffer, size_t bufferSize) {
 	uint8_t status = 0;
 	HAL_GPIO_WritePin(CODEC_RESET_GPIO_Port, CODEC_RESET_Pin, GPIO_PIN_SET);
 	// Address 4: Power Control 2, Data: 10101111 (Headphone on always, speakers off always)
 	status += write(0x04, 0xaf);
 	// Address 6: Interface Control 2, Data: 00000111 (Slave mode, normal polarity (doesn't matter), DSP mode off, I2S Format, 16bit data)
 	status += write(0x06, 0x07);
+	
+	// Manufacturer provided initialization
+	status += write(0x00, 0x99);
+    status += write(0x47, 0x80);
+    status += write(0x32, 0xBB);
+    status += write(0x32, 0x3B);
+    status += write(0x00, 0x00);
+
+	HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)buffer, bufferSize);
+	
 	// Address 2: Power Control 1, Data: 10011110 (Powered up)
 	status += write(0x02, 0x9e);
-
+	
 	return status;
 }
 
@@ -135,11 +146,116 @@ uint8_t Codec::write(uint8_t reg, uint8_t val) {
 
 ## Pin Configuration
 
+In CubeMX, most of the pins on the STM32 can be configured to do different things.
 
+By refering to the following pin out diagram, you can see which pins can be set to what.
 
-## I2S
+![pin out diagram](/Docs/STM32F407DISC_PinOut.avif)
+
+The red circles represent pins that aren't recommended to use, as they are wired to on board hardware. Using these for other purposes than what they are wired for will stop the hardware from being usable.
+
+Simply searching for the desired pin setting in CubeMX will show which pins can be set to the mode.
+
+Details on which pins are connected to which board function is found in Table 7 on page 26 of the [STM32F4 Disc Manual](Docs/STM32F4DISC_manual.pdf).
+
+### Audio Codec Reset Pin
+
+The Audio Codec has a reset pin that needs to be set to high for the chip to turn on. Refering to the [manual](Docs/STM32F4DISC_manual.pdf), the reset pin for the codec chip is connected to PD4.
+
+In CubeMX, set PD4 to GPIO_Output. Rename it to CODEC_RESET, so that we can use that name as a macro in code.
+
+### Setting Up I2C pins in CubeMX
+
+When enabling I2C1 in CubeMX on the STM32F4, it defaults to PB7-I2C1_SDA and PB6-I2C1_SCL. These pins would work work I2C with an external I2C device, but to the on-board codec chip is wired to PB6 and **PB9**. So, in CubeMX, after enabling I2C1 for I2C, you need to click and drag PB6 over to PB9. This makes the I2C1 engine route the output through PB9 instead so that the signal actually reaches the codec chip.
+
+## I2S Protocol
+
+A protocol made for audio to connnect two digital audio devices. Communicates PCM (Pulse Code Modulation) data, a digital form of audio data used in wav files.
+
+On the STM32F4, the Codec chip is connected to the STM32 through I2S to communicate audio data.
+
+Uses 4 wires:
+
+* Serial Clock (SCK): The metronome provided by the STM 32. A bit is communicated every pulse
+* Word Select (WS): Communicates which channel the data is for (L/R). Low means left, high means right.
+* Serial Data (SD): Audio information clumped into words of 16 or 24 bits.
+* (Optional) Master Clock (MCLK): Clock to run the chip. Provided by the STM32, usually 256 times the sample rate.
+
+There is no handshaking that goes on in I2S. The data is streamed out constantly without confirmation from the slave.
+
+The process of sending one sample is as follows:
+
+1. WS drops to low to prepare to send the left channel
+2. SCK pulses 16 times to send one sample
+3. WS flips high to prepare to send the right channel
+4. SCK pulses 16 times to send a sample
+5. The codec has two 16bit numbers that is processes in its DAC to drive the headphone jack or speaker
+
+### I2S Setup in CubeMX
+
+Go to multimedia and select I2S3. Select Half-Duplex master mode. The half-duplex means it will either transmit or receive, but not both. We need it to be a master transmit.
+
+The sample rate is also set here. The real frequency is based on the provided clock source. If it is off, refer to the [#Clock Configuration](#clock-configuration) section on how to calculate and set the PLLI2S to the proper value for the sample rate.
+
+## DMA
+
+The CPU, DMA and the I2S device both live in the microcontroller (MCU). The I2S hardware sends one sample at a time. Instead of the CPU sending one sample at a time, the DMA accesses a buffer of audio and sends over a sample whenever the I2S requests it. The sample is placed in SPI3_TX, a hardware signal line within the STM32 chip connecting I2S to DMA. The DMA places the sample data in this register, and the I2S sends high voltage down when it needs another sample. As the CPU doesn't deal with any of this copying, the CPU has more time for complex math.
+
+The DMA communicates to the CPU when it has used half of the buffer through an interrupt. This interrupt makes the CPU stop what its doing and run a callback function that generates audio for the half of the buffer that was used. This is what a circular buffer, or a sliding window, is.
+
+### DMA Setup in CubeMX
+
+Under the I2S3 menu, the DMA settings section allows you to add a DMA request by SPI3_TX. Setting this DMA request to a circular mode with half-word data width sets up 16 bit audio buffer DMA perfectly.
+
+## SPI Interface
+
+A higher rate of data transfer compared to I2C at the cost of needing a dedicated line for each slave.
 
 ## Clock Configuration
+
+There are so many abbrevaitions and boxes to configure when looking at the clock configuration tab. This section will go through each box relavent to audio DSP.
+
+### RCC
+
+The Reset and Clock Control. This takes the raw vibrations of crystals and distribute them to every part of the chip. The pulse from the RCC, or the clock, drives the chip. This is the clock configuration tab in CubeMX is configuring.
+
+The STM32F4 disc board provides two crystals
+
+- HSI (High-Speed Internal): The built in RC oscillator inside the silicon. It is always there when the chip boots up, starting up near instantly with low power. Ensures the chip boots in a timely manner, and provides a inaccurate but low power clock.
+
+- HSE (High-Speed External): A physical metal crystal soldered onto the board. Takes a few milliseconds to stabilitze, but is accurate to a few parts per million. Nessessary for driving the I2S bus at an accurate clock speed to match the desired sample rate.
+
+### Clock Configuration Tab in CubeMX
+
+The clock config tab is simply the user interface of the RCC. I will go through all the steps the blog post goes through on this page.
+
+- *First, we will set our external crystal. To do that click on System Core, next choose RCC. Set High Speed Clock (HSE) as Crystal.*
+
+	Before entering the clock config, the RCC must be told to use the HSE. Setting the HSE mode for the RCC to Crystal tells the RCC that there is a crystal connected that it needs to power.
+
+- *Change input frequency from whatever value it is to 8.*
+
+	Setting the input freq to 8MHz tells the RCC there is a 8MHz clock signal coming in. This is a set constant for the discovery board, as the on-board crystal is a 8MHz crystal. If you were to solder on a different crystal, you would change this value to whatever speed crystal you use.
+
+- *In PLL Source: Change from HSI to HSE.*
+
+	Tells the PLL (Phase Locked Loop) to use the external crystal over the internal one.
+
+- *In System Clock: Change from whatever it is to PLLCLK.*
+
+	Neither the HSI nor the HSE is fast enough to run the chip at its best clock speed. The STM32F407VG6 chip can run up to 168MHz, so the system clock should be at 168MHz to get maximum performance out of the chip. The only way to get a clock speed this high from HSI or HSE is by using PLL to scale the clock speed up.
+
+- *NOW! Let’s do some magic: write down 168 in HCLK and hit ENTER. See how it magically adjusts all the parameters!*
+
+	HCLK is the clock sent to the chip. We want this at 168MHz for max performance. By pressing enter, the paramters for the PLL are calculated to take the HSE clock input up to 168MHz.
+
+	The values past HCLK are important, but don't need to be touched. By default, they are scaled from HCLK to their proper values. They are important, however, as they are clock speeds for the I2C (APB1 peripheral clock), I2S (APB1), and DMA.
+
+- *And change PLLI2S to 123*
+
+	This change comes after the I2S communication is set to 48kHz. The audio codec chip needs a clock speed of 256 times the sample rate, or 12.288 MHz. By getting close to the desired clock speed, the I2S hardware on the STM32 (I2S2 and I2S3) can extrapolate down to a clock speed fit for 48kHz sample rate. This extrapolation results in the 0.09% error. The PLLI2S provides a way to separate the ideal clock for the CPU from the ideal clock for audio.
+
+	As there are two I2S engines on board, one can handle mic input, while the other controls headphone output, for instance.
 
 ## Board Support Packages (BSP)
 

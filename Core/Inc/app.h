@@ -8,6 +8,10 @@
 #ifndef SRC_APP_H_
 #define SRC_APP_H_
 
+#include <stdio.h>
+
+#define NUM_FRAMES 256
+#define BUFFER_SIZE (NUM_FRAMES * 4)
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,2 +1,9 @@
 .settings/
 Debug/
+.vscode/
+build/
+cmake/
+
+.vscode/
+.settings/
+.clangd
