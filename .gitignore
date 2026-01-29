@@ -6,3 +6,4 @@ build/
 .vscode/
 .settings/
 .clangd
+stm32f407.svd
