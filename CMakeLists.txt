@@ -53,6 +53,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/app.cpp
     App/Src/Codec.cpp
     App/Src/Osc.cpp
+    App/Src/csound_stub.cpp
 )
 
 # Add include paths
@@ -60,6 +61,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Core/Inc
     App/Inc
+    Csound/include
 )
 
 # Add project symbols (macros)
@@ -75,7 +77,22 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+    ${CMAKE_CURRENT_SOURCE_DIR}/Csound/lib/libcsound.a
     stdc++
     m
-    nosys
+)
+
+# Add to your CMakeLists.txt
+add_compile_options(
+    -mcpu=cortex-m4 
+    -mthumb 
+    -mfloat-abi=hard 
+    -mfpu=fpv4-sp-d16
+)
+add_link_options(
+    -mcpu=cortex-m4 
+    -mthumb 
+    -mfloat-abi=hard 
+    -mfpu=fpv4-sp-d16
+    --specs=nosys.specs
 )

@@ -26,7 +26,7 @@
     
   .syntax unified
   .cpu cortex-m4
-  .fpu softvfp
+  .fpu fpv4-sp-d16
   .thumb
 
 .global  g_pfnVectors
@@ -59,6 +59,14 @@ defined in linker script */
   .type  Reset_Handler, %function
 Reset_Handler:  
   ldr   sp, =_estack     /* set stack pointer */
+  
+  /* Enable FPU Access Control Register */
+  ldr.w r0, =0xE000ED88    /* CPACR is located at address 0xE000ED88 */
+  ldr r1, [r0]
+  orr r1, r1, #(0xF << 20) /* Full access to CP10 & CP11 */
+  str r1, [r0]
+  dsb
+  isb
   
 /* Call the clock system initialization function.*/
   bl  SystemInit  

@@ -13,6 +13,8 @@
 #define NUM_FRAMES 256
 #define BUFFER_SIZE (NUM_FRAMES * 4)
 
+// void csound_init_app();
+
 #ifdef __cplusplus
 extern "C" {
 #endif
