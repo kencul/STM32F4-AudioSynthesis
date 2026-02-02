@@ -17,6 +17,8 @@ public:
     uint16_t process(int16_t * buffer, uint16_t numFrames);
 
     void setAmplitude(float amp){_amp = amp;}
+
+    void setFreq(float freq){_freq = freq;}
     
 private:
     
