@@ -94,6 +94,7 @@ int main(void)
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_ADC1_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   cpp_main();
   /* USER CODE END 2 */
