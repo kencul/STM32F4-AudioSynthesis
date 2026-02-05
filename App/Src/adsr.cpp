@@ -1,34 +1,33 @@
 #include "adsr.h"
 #include <algorithm>
+#include <cmath>
 
-Adsr::Adsr(float sr, float attack, float decay, float sustain, float release){
+Adsr::Adsr(float sr, float attack, float decay, float sustain, float release) {
     _sampleRate = sr;
-    _sustainLevel = sustain;
+    _output = 0.0f;
+    _state = EnvState::IDLE;
 
-    _sustainLevel = std::clamp(sustain, 0.0f, 1.0f);
     setAttack(attack);
+    setDecay(decay);
+    setSustain(sustain);
     setRelease(release);
-    _decayTime = std::max(0.0001f, decay);
-    
-    // Calculate all steps
-    calcDecay();
 }
 
-Adsr::~Adsr(){}
+Adsr::~Adsr() {}
 
-// Interface for the Osc to interact with
-void Adsr::gate(bool on){
-    if(on){
+void Adsr::gate(bool on) {
+    if (on) {
         _state = EnvState::ATTACK;
-        calcAttack(_output);
-
+        // Linear attack: calculate step based on current output to peak (1.0)
+        _attackStep = (1.0f - _output) / (std::max(0.0001f, _attackTime) * _sampleRate);
     } else {
         _state = EnvState::RELEASE;
-        calcRelease(_output);
+        // Pre-calculate multiplier for exponential release
+        calcRelease();
     }
 }
 
-float Adsr::getNextSample(){
+float Adsr::getNextSample() {
     switch (_state) {
         case EnvState::IDLE:
             _output = 0.0f;
@@ -39,12 +38,17 @@ float Adsr::getNextSample(){
             if (_output >= 1.0f) {
                 _output = 1.0f;
                 _state = EnvState::DECAY;
+                calcDecay(); // Prepare multiplier for decay
             }
             break;
 
         case EnvState::DECAY:
-            _output -= _decayStep;
-            if (_output <= _sustainLevel) {
+            // Exponential decay toward sustain level
+            // We use a small offset so it actually reaches the target
+            _output = _sustainLevel + (_output - _sustainLevel) * _decayMult;
+            
+            // If we are within a tiny margin of sustain, snap to it
+            if (std::abs(_output - _sustainLevel) < 0.0001f) {
                 _output = _sustainLevel;
                 _state = EnvState::SUSTAIN;
             }
@@ -55,7 +59,10 @@ float Adsr::getNextSample(){
             break;
 
         case EnvState::RELEASE:
-            _output -= _releaseStep;
+            // Exponential release toward a target slightly below 0
+            // This ensures the curve crosses 0 in a reasonable time
+            _output = -0.01f + (_output - (-0.01f)) * _releaseMult;
+
             if (_output <= 0.0f) {
                 _output = 0.0f;
                 _state = EnvState::IDLE;
@@ -65,42 +72,42 @@ float Adsr::getNextSample(){
     return _output;
 }
 
-bool Adsr::isActive(){
-    return _state != EnvState::IDLE;
+// Helper to calculate the multiplier coefficient
+// rate = how long to reach ~0.01% of the distance
+float Adsr::calcMultiplier(float timeInSeconds) {
+    if (timeInSeconds <= 0.0001f) return 0.0f;
+    // T60: time to drop 60dB (to 0.001 of original value)
+    return expf(-6.907755f / (timeInSeconds * _sampleRate)); 
 }
 
-// Setters for parameters
-void Adsr::setAttack(float seconds){
+void Adsr::setAttack(float seconds) {
     _attackTime = std::max(0.0001f, seconds);
-    return;
 }
 
-void Adsr::setDecay(float seconds){
+void Adsr::setDecay(float seconds) {
     _decayTime = std::max(0.0001f, seconds);
     calcDecay();
-    return;
 }
 
-void Adsr::setSustain(float level){
-    _sustainLevel = std::clamp(level, 0.f, 1.f);
-    calcDecay();
-    return;
+void Adsr::setSustain(float level) {
+    _sustainLevel = std::clamp(level, 0.0f, 1.0f);
+    // If we change sustain while decaying, we don't need to re-calc multiplier,
+    // just the target changes in getNextSample()
 }
 
-void Adsr::setRelease(float seconds){
+void Adsr::setRelease(float seconds) {
     _releaseTime = std::max(0.0001f, seconds);
-    return;
+    calcRelease();
 }
 
-void Adsr::calcAttack(float startValue){
-    _attackStep = (1.0f - startValue) / (_attackTime * _sampleRate);
-    return;
+void Adsr::calcDecay() {
+    _decayMult = calcMultiplier(_decayTime);
 }
-void Adsr::calcDecay(){
-    _decayStep = (1.0f - _sustainLevel) / (_decayTime * _sampleRate);
-    return;
+
+void Adsr::calcRelease() {
+    _releaseMult = calcMultiplier(_releaseTime);
 }
-void Adsr::calcRelease(float startValue){
-    _releaseStep = startValue / (_releaseTime * _sampleRate);
-    return;
+
+bool Adsr::isActive() {
+    return _state != EnvState::IDLE;
 }

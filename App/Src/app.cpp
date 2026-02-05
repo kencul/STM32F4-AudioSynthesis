@@ -19,7 +19,7 @@
 #define SAMPLE_RATE 48000
 
 Codec codec;
-Osc osc(720, 0.01, BUFFER_SIZE, SAMPLE_RATE);
+Osc osc(720, 0.5, BUFFER_SIZE, SAMPLE_RATE);
 int16_t buffer[BUFFER_SIZE] = {0};
 
 PotBank hardwarePots(&hadc1, &hadc2, GPIOE, MUX_A_Pin, GPIOE, MUX_B_Pin);
@@ -28,7 +28,7 @@ extern "C" void cpp_main() {
     // osc init
 	osc.process(buffer, NUM_FRAMES);
 	osc.process(&buffer[NUM_FRAMES*2], NUM_FRAMES);
-    osc.setAmplitude(0.01f);
+    osc.setAmplitude(0.5f);
     
     // codec init
 	auto status = codec.init(buffer, BUFFER_SIZE);
@@ -57,48 +57,21 @@ extern "C" void cpp_main() {
                 osc.noteOn();
                 HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_SET);
                 notePlaying = true;
+                //osc.setAmplitude(0.0001f);
             }
         } else {
             if(notePlaying){
                 osc.noteOff();
                 HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
                 notePlaying = false;
+                //osc.setAmplitude(0.f);
             }
         }
-
-        // // Reading analog signal
-        // HAL_ADC_Start(&hadc1);
-        // if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-        //     // Get the value (0-4095)
-        //     uint32_t adc_val = HAL_ADC_GetValue(&hadc1);
-        //     uint32_t diff = (adc_val > lastPotVal) ? (adc_val - lastPotVal) : (lastPotVal - adc_val);
-        //     if(diff > 40){
-        //         lastPotVal = adc_val;
-        //         uint32_t midiNote = (adc_val >> 7) + 48;
-        //         osc.setFreq(midiNote);
-        //     }
-        // }
-        // HAL_ADC_Stop(&hadc1);
-
-        // HAL_ADC_Start(&hadc2);
-        // if (HAL_ADC_PollForConversion(&hadc2, 10) == HAL_OK) {
-        //     // Get the value (0-4095)
-        //     uint32_t adc_val = HAL_ADC_GetValue(&hadc2);
-        //     uint32_t diff = (adc_val > lastPotVal2) ? (adc_val - lastPotVal2) : (lastPotVal2 - adc_val);
-        //     if(diff > 20){
-        //         float potNormalized = (float)adc_val / 4095.0f;
-        //         osc.setMorph(potNormalized);
-        //         lastPotVal2 = adc_val;
-        //     }
-        // }
-        // HAL_ADC_Stop(&hadc2);
-        
-        // HAL_Delay(5);
 	
         if (hardwarePots.anyChanged()) {
             for (uint8_t i = 0; i < 8; i++) {
                 if (hardwarePots.hasChanged(i)) {
-                    handleParamChange(i, hardwarePots.pots[i].getFloat(), hardwarePots.pots[i].getRaw());
+                    handleParamChange(i);
                 }
             }
         }
@@ -125,13 +98,15 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 }
 
-void handleParamChange(uint8_t index, float value, uint16_t rawValue) {
+void handleParamChange(uint8_t index) {
+    Pot& p = hardwarePots.pots[index];
     switch(index) {
-        case 0: osc.setMorph(value); break;
-        case 1: osc.setFreq((uint32_t)((rawValue >> 7) + 48)); break; // Example mapping
-        case 4: osc.setAttack(value * 0.5); break;
-        case 5: osc.setDecay(value* 0.5); break;
-        case 6: osc.setSustain(value); break;
-        case 7: osc.setRelease(value * 0.5); break;
+        case 0: codec.setVolume(p.scaleExp(0.f, 1.f)); break;
+        case 1: osc.setFreq((uint32_t)((p.getRaw() >> 7) + 48)); break;
+        case 3: osc.setMorph(p.getFloat()); break;
+        case 4: osc.setAttack(p.scaleExp(0.f, 3.f, 2.f)); break;
+        case 5: osc.setDecay(p.scaleExp(0.f, 3.f, 2.f)); break;
+        case 6: osc.setSustain(p.scaleLin(0.f, 1.f)); break;
+        case 7: osc.setRelease(p.scaleExp(0.f, 3.f, 2.f)); break;
     }
 }

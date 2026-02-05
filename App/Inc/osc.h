@@ -7,7 +7,7 @@
 
 class Osc {
 public:
-    static constexpr uint32_t TABLE_SIZE = 1024;
+    static constexpr uint32_t TABLE_SIZE = 4096;
     static constexpr uint32_t MIDI_TABLE_SIZE = 128;
 
     Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr = 48000);
@@ -26,7 +26,7 @@ public:
     void noteOn();
     void noteOn(uint32_t midiNote);
     void noteOff();
-    
+
     void setAttack(float seconds);
     void setDecay(float seconds);
     void setSustain(float value);

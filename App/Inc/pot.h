@@ -16,7 +16,11 @@ public:
 
     float getFloat() const;
     uint16_t getRaw() const;
-    float scale(float min, float max) const;
+    float scaleLin(float min, float max) const;
+
+    float scaleLog(float min, float max);
+    
+    float scaleExp(float min, float max, float curve = 2.0f);
 
 private:
     float _alpha;

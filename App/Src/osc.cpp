@@ -16,7 +16,6 @@ Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr) : _freq(freq),
             float angle = ((float)i / (float)TABLE_SIZE) * 2.0f * M_PI;
             _wavetableSin[i] = sinf(angle);
             
-            
             // Band-Limited Square Table
             float squareSum = 0.0f;
             int numHarmonics = 20; // 20 harmonics
@@ -46,13 +45,13 @@ uint16_t Osc::process(int16_t * buffer, uint16_t numFrames){
     }
 
     // value of 1 over int32
-    const float invFraction = 1.0f / 4194304.0f;
+    const float invFraction = 1.0f / 1048576.0f;
     for(int i = 0; i < numFrames; i++){
-        // Get top 10 bits of phase aka 0-1023
-        uint32_t idx1 = _ph >> 22; 
-        uint32_t idx2 = (idx1 + 1) & 1023; 
+        // Get top 12 bits of phase aka 0-4095
+        uint32_t idx1 = _ph >> 20; 
+        uint32_t idx2 = (idx1 + 1) & (TABLE_SIZE - 1); 
         // Bottom 22 bits are the fractional phase
-        float fraction = (_ph & 0x3FFFFF) * invFraction ;
+        float fraction = (_ph & 0xFFFFF) * invFraction;
 
         // Linear interpolation
         float sine1 = _wavetableSin[idx1];
@@ -71,7 +70,8 @@ uint16_t Osc::process(int16_t * buffer, uint16_t numFrames){
         if (sample > 1.0f) sample = 1.0f;
         else if (sample < -1.0f) sample = -1.0f;
         
-        int16_t out = (int16_t)(sample * 32767);
+        float finalSample = sample * 32767.0f;
+        int16_t out = (int16_t)lrint(finalSample);
         
         buffer[i*2] += out;
         buffer[i*2+1] += out;
@@ -130,6 +130,6 @@ void Osc::setRelease(float seconds){
 }
 
 void Osc::calcPhaseInc(){
-    _phaseInc =  (uint32_t)(((double)_freq* 4294967296.0) / (double)_sr);
+    _phaseInc =  (uint32_t)(((float)_freq* 4294967296.0f) / (float)_sr);
     return;
 }

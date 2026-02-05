@@ -36,11 +36,11 @@ private:
     float _attackTime, _decayTime, _releaseTime;
     float _sustainLevel;
     // Increments calculated based on time and sample rate
-    float _attackStep, _decayStep, _releaseStep;
+    float _attackStep, _decayMult, _releaseMult;
 
-    //void calcSteps();
+    float calcMultiplier(float timeInSeconds);
     void calcAttack(float startValue);
-    void calcRelease(float startValue);
+    void calcRelease();
     void calcDecay();
 };
 #endif
