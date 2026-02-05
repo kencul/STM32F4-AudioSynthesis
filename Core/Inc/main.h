@@ -59,6 +59,12 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define USER_BUTTON_Pin GPIO_PIN_0
 #define USER_BUTTON_GPIO_Port GPIOA
+#define MUX_A_Pin GPIO_PIN_7
+#define MUX_A_GPIO_Port GPIOE
+#define MUX_B_Pin GPIO_PIN_15
+#define MUX_B_GPIO_Port GPIOE
+#define GREEN_LED_Pin GPIO_PIN_12
+#define GREEN_LED_GPIO_Port GPIOD
 #define ORANGE_LED_Pin GPIO_PIN_13
 #define ORANGE_LED_GPIO_Port GPIOD
 #define BUTTON_Pin GPIO_PIN_6

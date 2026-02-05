@@ -3,34 +3,48 @@
 #include <math.h>
 #include <algorithm>
 
-Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr = 48000) : _freq(freq), _amp(amp), _sr(sr){
-    calcPhaseInc();
+float Osc::_wavetableSin[Osc::TABLE_SIZE];
+float Osc::_wavetableSquare[Osc::TABLE_SIZE];
+float Osc::_midiTable[Osc::MIDI_TABLE_SIZE];
 
-    // Fill wavetable with sine wave
-    for(int i = 0; i < 1024; i++) {
-        float angle = ((float)i / 1024.0f) * 2.0f * M_PI;
-        _wavetableSin[i] = sinf(angle);
-        
-        
-        // Band-Limited Square Table
-        float squareSum = 0.0f;
-        int numHarmonics = 20; // 20 harmonics
-        
-        for(int n = 1; n <= numHarmonics; n += 2) {
-            squareSum += (1.0f / (float)n) * sinf(angle * n);
+Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr) : _freq(freq), _amp(amp), _sr(sr){
+    
+    static bool tablesInitialized = false;
+    if (!tablesInitialized) {
+        // Fill wavetables
+        for(uint32_t i = 0; i < TABLE_SIZE; i++) {
+            float angle = ((float)i / (float)TABLE_SIZE) * 2.0f * M_PI;
+            _wavetableSin[i] = sinf(angle);
+            
+            
+            // Band-Limited Square Table
+            float squareSum = 0.0f;
+            int numHarmonics = 20; // 20 harmonics
+            
+            for(int n = 1; n <= numHarmonics; n += 2) {
+                squareSum += (1.0f / (float)n) * sinf(angle * n);
+            }
+            _wavetableSquare[i] = squareSum * (4.0f / M_PI);
         }
-        _wavetableSquare[i] = squareSum * (4.0f / M_PI);
+        
+        // compute midi to freq table
+        for(uint32_t i = 0; i < MIDI_TABLE_SIZE; i++) {
+            _midiTable[i] = 440.0f * powf(2.0f, ((float)i - 69.f) / 12.0f);
+        }
+        
+        tablesInitialized = true;
     }
-
-    // compute midi to freq table
-    for(int i = 0; i < 128; i++) {
-        _midiTable[i] = 440.0f * powf(2.0f, (float)(i - 69) / 12.0f);
-    }
+    
+    calcPhaseInc();
 };
 
 Osc::~Osc(){}
 
 uint16_t Osc::process(int16_t * buffer, uint16_t numFrames){
+    if(!_adsr.isActive()){
+        return 0;
+    }
+
     // value of 1 over int32
     const float invFraction = 1.0f / 4194304.0f;
     for(int i = 0; i < numFrames; i++){
@@ -50,17 +64,17 @@ uint16_t Osc::process(int16_t * buffer, uint16_t numFrames){
         float squareSample = square1 + (square2-square1) * fraction;
 
         // morph two wavetables
-        float sample = squareSample + _morph * (sineSample - squareSample);
+        float sample = sineSample + _morph * (squareSample - sineSample);
 
-        sample *= _amp;
+        sample *= _amp * _adsr.getNextSample(); 
 
         if (sample > 1.0f) sample = 1.0f;
         else if (sample < -1.0f) sample = -1.0f;
         
         int16_t out = (int16_t)(sample * 32767);
         
-        buffer[i*2] = out;
-        buffer[i*2+1] = out;
+        buffer[i*2] += out;
+        buffer[i*2+1] += out;
 
         _ph += _phaseInc;
     }
@@ -77,6 +91,41 @@ void Osc::setFreq(uint32_t midiNote){
     midiNote = std::clamp<uint32_t>(midiNote, 0, 127);
     _freq = _midiTable[midiNote];
     calcPhaseInc();
+    return;
+}
+
+void Osc::noteOn(){
+    if(!_adsr.isActive()) _ph = 0;
+    _adsr.gate(true);
+    return;
+}
+
+void Osc::noteOn(uint32_t midiNote){
+    setFreq(midiNote);
+    noteOn();
+    return;
+}
+
+void Osc::noteOff(){
+    _adsr.gate(false);
+    return;
+}
+
+void Osc::setAttack(float seconds){
+    _adsr.setAttack(seconds);
+    return;
+}
+
+void Osc::setDecay(float seconds){
+    _adsr.setDecay(seconds);
+    return;
+}
+void Osc::setSustain(float value){
+    _adsr.setSustain(value);
+    return;
+}
+void Osc::setRelease(float seconds){
+    _adsr.setRelease(seconds);
     return;
 }
 

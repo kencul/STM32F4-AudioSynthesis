@@ -51,8 +51,12 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     App/Src/app.cpp
-    App/Src/Codec.cpp
-    App/Src/Osc.cpp
+    App/Src/codec.cpp
+    App/Src/osc.cpp
+    App/Src/adsr.cpp
+    App/Src/potBank.cpp
+    App/Src/pot.cpp
+
 )
 
 # Add include paths

@@ -54,30 +54,6 @@
 
 
 
-Phase 2: Shaping the Tone (Wavetables & Morphing)
-
-Now that you have a clean sound, let's make it musically interesting.
-
-    Multi-Table Storage: Add a second wavetable (Saw or Square).
-
-    The "Morph" Logic: Create a variable (0.0 to 1.0) mapped to your second Potentiometer.
-
-        Goal: Calculate (WaveA * (1-morph)) + (WaveB * morph). This creates a smooth cross-fade between two timbres.
-
-    MIDI Frequency Mapping: Use a lookup table or the formula f=440⋅2(n−69)/12 to convert a "Note Number" to a frequency.
-
-Phase 3: The Dynamics (ADSR Envelope)
-
-This is where it stops sounding like a continuous "beep" and starts sounding like an instrument.
-
-    The State Machine: Create an enum for your ADSR states: IDLE, ATTACK, DECAY, SUSTAIN, RELEASE.
-
-    The Trigger: Hook your tactile button up to transition the state to ATTACK on press and RELEASE on release.
-
-    Gain Multiplication: Multiply your final oscillator sample by your current envelope value before sending it to the Audio Out.
-
-        Goal: No more clicking sounds when you press the button!
-
 Phase 4: The Character (Digital Filter)
 
 This is the hardest part of DSP code. Start simple.

@@ -25,11 +25,13 @@ void cpp_main(void);
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s);
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s);
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 #ifdef __cplusplus
 }
 #endif
 
-uint32_t Read_ADC_Channel(uint32_t channel);
+void handleParamChange(uint8_t index, float value, uint16_t rawValue);
 
 #endif /* SRC_APP_H_ */
