@@ -56,6 +56,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/adsr.cpp
     App/Src/potBank.cpp
     App/Src/pot.cpp
+    App/Src/moogLadder.cpp
 
 )
 

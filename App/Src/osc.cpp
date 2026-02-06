@@ -7,7 +7,7 @@ float Osc::_wavetableSin[Osc::TABLE_SIZE];
 float Osc::_wavetableSquare[Osc::TABLE_SIZE];
 float Osc::_midiTable[Osc::MIDI_TABLE_SIZE];
 
-Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr) : _freq(freq), _amp(amp), _sr(sr){
+Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr) : _freq(freq), _amp(amp), _sr(sr), _filter((float)sr){
     
     static bool tablesInitialized = false;
     if (!tablesInitialized) {
@@ -35,6 +35,11 @@ Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr) : _freq(freq),
     }
     
     calcPhaseInc();
+
+    // default filter state
+    _filter.setCutoff(5000.0f);
+    _filter.setResonance(0.0f);
+    
 };
 
 Osc::~Osc(){}
@@ -65,7 +70,11 @@ uint16_t Osc::process(int16_t * buffer, uint16_t numFrames){
         // morph two wavetables
         float sample = sineSample + _morph * (squareSample - sineSample);
 
+        // Adsr
         sample *= _amp * _adsr.getNextSample(); 
+
+        // filtering
+        sample = _filter.process(sample);
 
         if (sample > 1.0f) sample = 1.0f;
         else if (sample < -1.0f) sample = -1.0f;

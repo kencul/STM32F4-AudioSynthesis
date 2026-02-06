@@ -43,7 +43,7 @@ uint8_t Codec::init(int16_t * buffer, size_t bufferSize) {
 	status += write(0x02, 0x9e);
 	
 	// Digital soft ramp and digital zero cross for smooth volume changes
-	// status += write(0x0E, 0x03);
+	status += write(0x0E, 0x03);
 	return status;
 }
 
@@ -57,7 +57,7 @@ return 0;
 }
 
 uint8_t Codec::setVolume(float volume) {
-	static uint8_t lastVolume = -1;
+	static uint8_t lastVolume = 0;
     uint8_t regVal;
 	
 	// Codec headphone output: 0 = 0dB, 0x01 = mute

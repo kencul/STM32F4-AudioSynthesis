@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <cstdint>
 #include "adsr.h"
+#include "moogLadder.h"
 
 class Osc {
 public:
@@ -46,6 +47,7 @@ private:
     static float _midiTable[MIDI_TABLE_SIZE];
 
     Adsr _adsr = Adsr();
+    MoogLadder _filter;
 
     void calcPhaseInc();
 };

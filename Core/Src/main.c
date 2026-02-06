@@ -23,6 +23,7 @@
 #include "i2c.h"
 #include "i2s.h"
 #include "tim.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -97,6 +98,7 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM4_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   cpp_main();
   /* USER CODE END 2 */
@@ -136,7 +138,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
