@@ -33,5 +33,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 #endif
 
 void handleParamChange(uint8_t index);
+void handleMidi();
 
 #endif /* SRC_APP_H_ */

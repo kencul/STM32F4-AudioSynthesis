@@ -32,6 +32,9 @@ public:
     void setDecay(float seconds);
     void setSustain(float value);
     void setRelease(float seconds);
+
+    void setCutOff(float freq);
+    void setResonance(float res);
     
 private:
     float _freq;

@@ -1,7 +1,7 @@
 #include "pot.h"
 #include <math.h>
 
-Pot::Pot() : _alpha(0.1f), _filteredValue(0.0f), _lastStableValue(0), _threshold(8) {}
+Pot::Pot() : _alpha(0.1f), _filteredValue(0.0f), _lastStableValue(0), _threshold(20) {}
 
 void Pot::init(float alpha, uint8_t threshold) {
     _alpha = alpha;

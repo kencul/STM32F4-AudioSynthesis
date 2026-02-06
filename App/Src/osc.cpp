@@ -35,11 +35,6 @@ Osc::Osc(float freq, float amp, uint16_t bufferSize, uint16_t sr) : _freq(freq),
     }
     
     calcPhaseInc();
-
-    // default filter state
-    _filter.setCutoff(5000.0f);
-    _filter.setResonance(0.0f);
-    
 };
 
 Osc::~Osc(){}
@@ -73,6 +68,8 @@ uint16_t Osc::process(int16_t * buffer, uint16_t numFrames){
         // Adsr
         sample *= _amp * _adsr.getNextSample(); 
 
+        // if (sample > 1.0f) sample = 1.0f;
+        // else if (sample < -1.0f) sample = -1.0f;
         // filtering
         sample = _filter.process(sample);
 
@@ -140,5 +137,16 @@ void Osc::setRelease(float seconds){
 
 void Osc::calcPhaseInc(){
     _phaseInc =  (uint32_t)(((float)_freq* 4294967296.0f) / (float)_sr);
+    return;
+}
+
+void Osc::setCutOff(float freq){
+    _filter.setCutoff(freq);
+    return;
+}
+
+void Osc::setResonance(float res){
+
+    _filter.setResonance(std::clamp(res, 0.0f, 0.99f));
     return;
 }
