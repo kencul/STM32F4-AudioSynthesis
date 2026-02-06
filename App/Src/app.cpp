@@ -16,10 +16,13 @@
 #include "potBank.h"
 #include "tim.h"
 #include "midiBuffer.h"
+#include "pwmLed.h"
 
 #define SAMPLE_RATE 48000
 
 Codec codec;
+PWMLed ledController;
+
 Osc osc(720, 0.5, BUFFER_SIZE, SAMPLE_RATE);
 int16_t buffer[BUFFER_SIZE] = {0};
 
@@ -42,33 +45,46 @@ extern "C" void cpp_main() {
     // init adc
     hardwarePots.init();
 
+    // init led controller
+    if (ledController.init() != 0) {
+        while(1);
+    }
+
     // Init timer for adc scanning
     HAL_TIM_Base_Start_IT(&htim4);
-    //uint32_t lastPotVal = 0.f, lastPotVal2 = 0.f;
-    
-    bool notePlaying = false;
-    uint16_t cf = 20;
+
+    // startup sequence
+    ledController.ledAllOn(true);
     HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(1000);
+    ledController.ledAllOn(false);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(50);
+    ledController.ledAllOn(true);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(50);
+    ledController.ledAllOn(false);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(50);
+    ledController.ledAllOn(true);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(50);
+    ledController.ledAllOn(false);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(50);
+    ledController.ledAllOn(true);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(50);
+    ledController.ledAllOn(false);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+
+    bool ledsOn = false;
 	while(1){
         static uint32_t lastHeartbeat = 0;
         if(HAL_GetTick() - lastHeartbeat > 200) {
             HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
             lastHeartbeat = HAL_GetTick();
         }
-        
-		// if (HAL_GPIO_ReadPin(USER_BUTTON_GPIO_Port, USER_BUTTON_Pin) == GPIO_PIN_SET || HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin) == GPIO_PIN_RESET) {
-        //     if(!notePlaying){
-        //         notePlaying = true;
-        //         //osc.setAmplitude(0.0001f);
-        //     }
-        // } else {
-        //     if(notePlaying){
-        //         // osc.noteOff();
-        //         // HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
-        //         notePlaying = false;
-        //         // //osc.setAmplitude(0.f);
-        //     }
-        // }
 	
         if (hardwarePots.anyChanged()) {
             for (uint8_t i = 0; i < 8; i++) {
@@ -76,6 +92,13 @@ extern "C" void cpp_main() {
                     handleParamChange(i);
                 }
             }
+        }
+
+        // if (HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin) == GPIO_PIN_RESET );
+        auto buttonState = HAL_GPIO_ReadPin(USER_BUTTON_GPIO_Port, USER_BUTTON_Pin);
+        if (buttonState != ledsOn) {
+            ledsOn = buttonState;
+            ledController.ledAllOn(ledsOn);
         }
 
         handleMidi();

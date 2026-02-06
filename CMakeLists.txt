@@ -58,6 +58,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/pot.cpp
     App/Src/moogLadder.cpp
     App/Src/midiBridge.cpp
+    App/Src/pwmLED.cpp
 
 )
 

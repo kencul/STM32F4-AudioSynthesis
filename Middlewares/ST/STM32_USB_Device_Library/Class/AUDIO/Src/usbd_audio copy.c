@@ -653,7 +653,7 @@ static uint8_t USBD_AUDIO_IsoOutIncomplete(USBD_HandleTypeDef *pdev, uint8_t epn
   */
 static uint8_t USBD_AUDIO_DataOut(USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-  if (epnum == 0x01) // MIDI OUT endpoint
+  if (epnum == 0x01) // Your MIDI OUT endpoint
   {
     uint32_t length = USBD_LL_GetRxDataSize(pdev, epnum);
     USBD_AUDIO_HandleTypeDef *haudio = (USBD_AUDIO_HandleTypeDef *)pdev->pClassData;
