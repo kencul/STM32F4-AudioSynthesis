@@ -2,9 +2,10 @@
 #define SRC_ADSR_H_
 
 #include <cstdint>
+#include <algorithm>
 
 class Adsr {
-
+    public:
     enum class EnvState {
         IDLE,    // Output is 0
         ATTACK,  // Rising to 1.0
@@ -13,34 +14,68 @@ class Adsr {
         RELEASE  // Falling to 0.0
     };
 
-public:
-    Adsr(float sr = 48000, float attack = 0.1f, float decay = 0.1f, float sustain = 0.7f, float release = 0.5f);
-    virtual ~Adsr();
+    Adsr() noexcept = default;
+    ~Adsr() = default;
 
+    
     // Interface for the Osc to interact with
-    void gate(bool on);
-    float getNextSample();
-    bool isActive();
+    void init(float sr) noexcept;
+    void gate(bool on) noexcept;
+
+    __attribute__((always_inline)) inline float getNextSample() noexcept {
+        // Early exit for idle voices
+        if (_state == EnvState::IDLE) return 0.0f;
+
+        if (_state == EnvState::SUSTAIN) {
+            return _sustainLevel;
+        }
+
+        if (_state == EnvState::ATTACK) {
+            _output += _attackStep;
+            if (_output >= 1.0f) {
+                _output = 1.0f;
+                _state = EnvState::DECAY;
+                calcDecay();
+            }
+        } 
+        else if (_state == EnvState::DECAY) {
+            // Manual strength reduction: removed std::abs (output is always > sustain here)
+            _output = _sustainLevel + (_output - _sustainLevel) * _decayMult;
+            if ((_output - _sustainLevel) < 0.0001f) {
+                _output = _sustainLevel;
+                _state = EnvState::SUSTAIN;
+            }
+        } 
+        else if (_state == EnvState::RELEASE) {
+            _output = -0.01f + (_output + 0.01f) * _releaseMult;
+            if (_output <= 0.0001f) {
+                _output = 0.0f;
+                _state = EnvState::IDLE;
+            }
+        }
+
+        return _output;
+    }
+
+    [[nodiscard]] bool isActive() const noexcept { return _state != EnvState::IDLE; }
     
     // Setters for  parameters
-    void setAttack(float seconds);
-    void setDecay(float seconds);
-    void setSustain(float level); // 0.0 - 1.0
-    void setRelease(float seconds);
+    void setAttack(float seconds) noexcept;
+    void setDecay(float seconds) noexcept;
+    void setSustain(float level) noexcept;
+    void setRelease(float seconds) noexcept;
 private:
     EnvState _state = EnvState::IDLE;
-    float _sampleRate;
+    float _sampleRate = 48000.0f;
+    float _invSampleRate = 1.0f / 48000.0f;
+    float _output = 0.0f;
 
-    float _output = 0.0f;     // The current gain value (0.0 to 1.0)
+    float _attackTime{0.01f}, _decayTime{0.1f}, _releaseTime{0.5f};
+    float _sustainLevel{0.7f};
+    float _attackStep{0.0f}, _decayMult{0.0f}, _releaseMult{0.0f};
 
-    float _attackTime, _decayTime, _releaseTime;
-    float _sustainLevel;
-    // Increments calculated based on time and sample rate
-    float _attackStep, _decayMult, _releaseMult;
-
-    float calcMultiplier(float timeInSeconds);
-    void calcAttack(float startValue);
-    void calcRelease();
-    void calcDecay();
+    [[nodiscard]] float calcMultiplier(float timeInSeconds) const noexcept;
+    void calcDecay() noexcept;
+    void calcRelease() noexcept;
 };
 #endif
