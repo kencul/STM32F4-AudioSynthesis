@@ -99,6 +99,7 @@ int main(void)
   MX_ADC2_Init();
   MX_TIM4_Init();
   MX_USB_DEVICE_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
   cpp_main();
   /* USER CODE END 2 */

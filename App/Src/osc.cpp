@@ -9,7 +9,7 @@ float Osc::_midiTable[Osc::MIDI_TABLE_SIZE];
 
 static constexpr float PI = 3.1415926535f;
 
-void Osc::init(uint16_t sr) {
+void Osc::init(uint16_t sr) noexcept {
     _sr = sr;
     _filter.init(static_cast<float>(sr));
     _adsr.init(static_cast<float>(sr));
@@ -69,4 +69,20 @@ void Osc::noteOn(uint32_t midiNote, float amp) noexcept {
 
 void Osc::noteOff() noexcept {
     _adsr.gate(false);
+}
+
+void Osc::getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept {
+    // We iterate across the 'size' of the screen (e.g., 128 pixels)
+    // mapping it to our 4096-sample table
+    float step = static_cast<float>(TABLE_SIZE) / static_cast<float>(size);
+    
+    for (uint16_t i = 0; i < size; ++i) {
+        uint32_t idx = static_cast<uint32_t>(i * step) & (TABLE_SIZE - 1);
+        
+        float s1 = _wavetableSin[idx];
+        float s2 = _wavetableSquare[idx];
+        
+        // Simple linear morph for the preview
+        targetBuffer[i] = s1 + morph * (s2 - s1);
+    }
 }

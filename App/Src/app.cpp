@@ -6,7 +6,6 @@
  */
 
 #include "codec.h"
-#include <stdio.h>
 #include <cstdint>
 #include <vector>
 #include "app.h"
@@ -18,13 +17,15 @@
 #include "midiBuffer.h"
 #include "pwmLed.h"
 #include "voiceManager.h"
+#include "oled.h"
 
 #define SAMPLE_RATE 48000
 
 Codec codec;
 PWMLed ledController;
+Oled oled;
 
-VoiceManager voiceManager(SAMPLE_RATE, BUFFER_SIZE);
+__attribute__((section(".ccmram"))) VoiceManager voiceManager(SAMPLE_RATE, BUFFER_SIZE);
 
 int16_t buffer[BUFFER_SIZE] = {0};
 
@@ -33,10 +34,25 @@ PotBank hardwarePots(&hadc1, &hadc2, GPIOE, MUX_A_Pin, GPIOE, MUX_B_Pin);
 extern MidiBuffer gMidiBuffer;
 
 extern "C" void cpp_main() {
+    // init led controller
+    if (ledController.init() != 0) {
+        while(1);
+    }
+
+    ledController.ledAllOn(true);
+    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
+    HAL_Delay(1000);
+    
     // osc init
     voiceManager.process(buffer, NUM_FRAMES);
     voiceManager.process(&buffer[NUM_FRAMES * 2], NUM_FRAMES);
     
+    if (oled.init() == 0) {
+        oled.fill(true); // Fill buffer with white
+        oled.update();   // Send to screen via DMA
+    } else {
+        while(1);
+    }
     // codec init
 	auto status = codec.init(buffer, BUFFER_SIZE);
 	if(status){
@@ -45,19 +61,11 @@ extern "C" void cpp_main() {
     
     // init adc
     hardwarePots.init();
-
-    // init led controller
-    if (ledController.init() != 0) {
-        while(1);
-    }
-
+    
     // Init timer for adc scanning
     HAL_TIM_Base_Start_IT(&htim4);
-
+    
     // startup sequence
-    ledController.ledAllOn(true);
-    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
-    HAL_Delay(1000);
     ledController.ledAllOn(false);
     HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
     HAL_Delay(50);
@@ -87,6 +95,21 @@ extern "C" void cpp_main() {
                     handleParamChange(i);
                 }
             }
+        }
+
+        // LED Voice indicator update
+        static uint32_t lastLedUpdate = 0;
+        if(HAL_GetTick() - lastLedUpdate > 20) {
+            lastLedUpdate = HAL_GetTick();
+            
+            // Grab all levels from VoiceManager at once
+            std::array<float, 8> levels;
+            for(uint8_t i = 0; i < 8; ++i) {
+                levels[i] = voiceManager.getVoiceLevel(i);
+            }
+            
+            // Burst update the I2C LED controller
+            ledController.updateVoices(levels);
         }
 
         // if (HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin) == GPIO_PIN_RESET );
@@ -126,7 +149,16 @@ void handleParamChange(uint8_t index) {
         case 0: codec.setVolume(p.scaleExp(0.f, 1.f)); break;
         case 1: voiceManager.setCutoff(p.scaleExp(20.f, 15000.f, 2.f)); break;
         case 2: voiceManager.setResonance(p.getFloat()); break;
-        case 3: voiceManager.setMorph(p.getFloat()); break;
+        case 3: 
+        {
+            float newMorph = p.getFloat();
+            voiceManager.setMorph(newMorph); 
+            float oledWaveform[128];
+            Osc::getMorphedPreview(oledWaveform, 128, newMorph);
+            oled.drawBuffer(oledWaveform, 128);
+            oled.update();
+        }
+            break;
         case 4: voiceManager.setAttack(p.scaleExp(0.f, 3.f, 2.f)); break;
         case 5: voiceManager.setDecay(p.scaleExp(0.f, 3.f, 2.f)); break;
         case 6: voiceManager.setSustain(p.scaleLin(0.f, 1.f)); break;

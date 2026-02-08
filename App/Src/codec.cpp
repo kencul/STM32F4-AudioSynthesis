@@ -9,7 +9,6 @@
 #include "i2c.h"
 #include "gpio.h"
 #include "i2s.h"
-#include <cstdint>
 
 Codec::Codec() {
 	// TODO Auto-generated constructor stub

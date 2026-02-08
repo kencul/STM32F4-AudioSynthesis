@@ -71,6 +71,10 @@ public:
     void setResonance(float res) noexcept { _filter.setResonance(res); }
 
     [[nodiscard]] bool isActive() const noexcept { return _adsr.isActive(); }
+    [[nodiscard]] float getAdsrLevel() const noexcept { return _adsr.getLevel(); }
+
+    // OLED interface
+    static void getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept;
     
 private:
     float _freq{440.0f};

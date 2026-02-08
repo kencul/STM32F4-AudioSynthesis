@@ -58,6 +58,7 @@ class Adsr {
     }
 
     [[nodiscard]] bool isActive() const noexcept { return _state != EnvState::IDLE; }
+    [[nodiscard]] float getLevel() const noexcept { return _output; }
     
     // Setters for  parameters
     void setAttack(float seconds) noexcept;

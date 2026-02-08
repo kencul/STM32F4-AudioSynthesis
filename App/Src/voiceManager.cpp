@@ -63,28 +63,29 @@ void VoiceManager::noteOff(uint8_t note) {
 void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
     // This is now a true constant, so the compiler will be happy.
     // We use numFrames * 2 because we need Space for L and R for one callback
-    static float mixBus[NUM_FRAMES * 2]; 
-    
-    // Safety: Ensure we aren't being asked for more frames than we allocated
     std::fill(mixBus, mixBus + (numFrames * 2), 0.0f);
 
-    for(auto& v : _voices) {
+    for(int i = 0; i < MAX_VOICES; ++i) {
+        auto& v = _voices[i];
+        
         if(v.isActive()) {
-            v.process(mixBus, numFrames); 
+            v.process(mixBus, numFrames);
+            _voiceLevels[i] = v.getAdsrLevel();
+        } else {
+            _voiceLevels[i] = 0.0f;
         }
     }
 
-    // Master Scaling & Conversion
-    float masterGain = 1.0f / (float)MAX_VOICES;
+    // Pre-calculate scaling factor
+    const float masterGain = (1.0f / static_cast<float>(MAX_VOICES)) * 32767.0f;
 
     for(int i = 0; i < numFrames * 2; i++) {
+        // Use std::clamp and pre-multiplied gain
         float out = mixBus[i] * masterGain;
+        out = std::clamp(out, -32767.0f, 32767.0f);
 
-        // Soft-clipping/Limiting is better for audio than hard truncation
-        if (out > 1.0f) out = 1.0f;
-        if (out < -1.0f) out = -1.0f;
-
-        buffer[i] = static_cast<int16_t>(lrintf(out * 32767.0f));
+        // Simple cast is fast once clamped
+        buffer[i] = static_cast<int16_t>(out);
     }
 }
 

@@ -2,16 +2,20 @@
 #include "osc.h"
 #include <array>
 #include <cstdint>
+#include "app.h"
 
 class VoiceManager {
 private:
     static constexpr int MAX_VOICES = 8;
-    std::array<Osc, MAX_VOICES> _voices;
+    std::array<Osc, MAX_VOICES> _voices; 
     uint8_t _noteMap[MAX_VOICES];
     uint32_t _lastUsed[MAX_VOICES];
     uint32_t _tickCount = 0;
     float _sampleRate;
     uint16_t _bufferSize;
+    float mixBus[NUM_FRAMES * 2];
+
+    std::array<float, MAX_VOICES> _voiceLevels;
 
 public:
     VoiceManager(float sr, uint16_t bufferSize) : _sampleRate(sr) {
@@ -34,4 +38,8 @@ public:
     void setDecay(float seconds);
     void setSustain(float level);
     void setRelease(float seconds);
+
+    [[nodiscard]] float getVoiceLevel(uint8_t voiceIdx) const noexcept {
+        return (voiceIdx < MAX_VOICES) ? _voiceLevels[voiceIdx] : 0.0f;
+    }
 };
