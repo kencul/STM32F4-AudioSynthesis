@@ -18,6 +18,7 @@
 #include "pwmLed.h"
 #include "voiceManager.h"
 #include "oled.h"
+#include "waveforms.h"
 
 #define SAMPLE_RATE 48000
 
@@ -41,7 +42,7 @@ extern "C" void cpp_main() {
 
     ledController.ledAllOn(true);
     HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
-    HAL_Delay(1000);
+    HAL_Delay(100);
     
     // osc init
     voiceManager.process(buffer, NUM_FRAMES);
@@ -81,7 +82,6 @@ extern "C" void cpp_main() {
     ledController.ledAllOn(false);
     HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
 
-    bool ledsOn = false;
 	while(1){
         static uint32_t lastHeartbeat = 0;
         if(HAL_GetTick() - lastHeartbeat > 200) {
@@ -112,11 +112,25 @@ extern "C" void cpp_main() {
             ledController.updateVoices(levels);
         }
 
-        // if (HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin) == GPIO_PIN_RESET );
-        auto buttonState = HAL_GPIO_ReadPin(USER_BUTTON_GPIO_Port, USER_BUTTON_Pin);
-        if (buttonState != ledsOn) {
-            ledsOn = buttonState;
-            ledController.ledAllOn(ledsOn);
+        static uint32_t lastDebounceTime = 0;
+        if (HAL_GetTick() - lastDebounceTime > 20) { // Check state every 20ms
+            lastDebounceTime = HAL_GetTick();
+
+            // Button A
+            static bool stableStateA = true;
+            bool rawA = HAL_GPIO_ReadPin(BUTTON_A_GPIO_Port, BUTTON_A_Pin);
+            if (rawA != stableStateA) {
+                if (rawA == GPIO_PIN_RESET) cycleWaveform(0); // Pressed
+                stableStateA = rawA;
+            }
+
+            // Button B
+            static bool stableStateB = true;
+            bool rawB = HAL_GPIO_ReadPin(BUTTON_B_GPIO_Port, BUTTON_B_Pin);
+            if (rawB != stableStateB) {
+                if (rawB == GPIO_PIN_RESET) cycleWaveform(1); // Pressed
+                stableStateB = rawB;
+            }
         }
 
         handleMidi();
@@ -143,6 +157,16 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 }
 
+void refreshOledWaveform() {
+    float oledWaveform[128];
+    float currentMorph = hardwarePots.pots[3].getFloat(); 
+    
+    Osc::getMorphedPreview(oledWaveform, 128, currentMorph);
+
+    oled.drawBuffer(oledWaveform, 128);
+    oled.update();
+}
+
 void handleParamChange(uint8_t index) {
     Pot& p = hardwarePots.pots[index];
     switch(index) {
@@ -153,10 +177,7 @@ void handleParamChange(uint8_t index) {
         {
             float newMorph = p.getFloat();
             voiceManager.setMorph(newMorph); 
-            float oledWaveform[128];
-            Osc::getMorphedPreview(oledWaveform, 128, newMorph);
-            oled.drawBuffer(oledWaveform, 128);
-            oled.update();
+            refreshOledWaveform();
         }
             break;
         case 4: voiceManager.setAttack(p.scaleExp(0.f, 3.f, 2.f)); break;
@@ -206,4 +227,20 @@ void handleMidi() {
                 break;
         }
     }
+}
+
+
+void cycleWaveform(uint8_t slot) {
+    uint8_t nextIdx = Osc::getActiveIdx(slot);
+    uint8_t otherIdx = Osc::getActiveIdx(slot == 0 ? 1 : 0);
+
+    // Increment and skip if it matches the other slot
+    do {
+        nextIdx = (nextIdx + 1) % WAVE_COUNT;
+    } while (nextIdx == otherIdx);
+
+    __disable_irq();
+    Osc::loadWaveform(nextIdx, slot);
+    __enable_irq();
+    refreshOledWaveform();
 }

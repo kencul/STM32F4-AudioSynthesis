@@ -63,12 +63,14 @@ void Error_Handler(void);
 #define MUX_A_GPIO_Port GPIOE
 #define MUX_B_Pin GPIO_PIN_15
 #define MUX_B_GPIO_Port GPIOE
+#define BUTTON_A_Pin GPIO_PIN_11
+#define BUTTON_A_GPIO_Port GPIOD
 #define GREEN_LED_Pin GPIO_PIN_12
 #define GREEN_LED_GPIO_Port GPIOD
 #define ORANGE_LED_Pin GPIO_PIN_13
 #define ORANGE_LED_GPIO_Port GPIOD
-#define BUTTON_Pin GPIO_PIN_6
-#define BUTTON_GPIO_Port GPIOC
+#define BUTTON_B_Pin GPIO_PIN_6
+#define BUTTON_B_GPIO_Port GPIOC
 #define CODEC_RESET_Pin GPIO_PIN_4
 #define CODEC_RESET_GPIO_Port GPIOD
 

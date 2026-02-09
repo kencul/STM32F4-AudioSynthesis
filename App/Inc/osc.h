@@ -33,12 +33,12 @@ public:
             float sample;
             // Skip morph if possible
             if (morph <= 0.0f) {
-                sample = _wavetableSin[idx1] + (_wavetableSin[idx2] - _wavetableSin[idx1]) * fraction;
+                sample = _wavetableA[idx1] + (_wavetableA[idx2] - _wavetableA[idx1]) * fraction;
             } else if (morph >= 1.0f) {
-                sample = _wavetableSquare[idx1] + (_wavetableSquare[idx2] - _wavetableSquare[idx1]) * fraction;
+                sample = _wavetableB[idx1] + (_wavetableB[idx2] - _wavetableB[idx1]) * fraction;
             } else {
-                const float s1 = _wavetableSin[idx1] + (_wavetableSin[idx2] - _wavetableSin[idx1]) * fraction;
-                const float s2 = _wavetableSquare[idx1] + (_wavetableSquare[idx2] - _wavetableSquare[idx1]) * fraction;
+                const float s1 = _wavetableA[idx1] + (_wavetableA[idx2] - _wavetableA[idx1]) * fraction;
+                const float s2 = _wavetableB[idx1] + (_wavetableB[idx2] - _wavetableB[idx1]) * fraction;
                 sample = s1 + morph * (s2 - s1);
             }
 
@@ -75,6 +75,9 @@ public:
 
     // OLED interface
     static void getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept;
+
+    static void loadWaveform(uint8_t libraryIdx, uint8_t slot) noexcept;
+    [[nodiscard]] static uint8_t getActiveIdx(uint8_t slot) noexcept { return _currentIdx[slot]; }
     
 private:
     float _freq{440.0f};
@@ -85,12 +88,14 @@ private:
     uint16_t _sr{48000};
     uint32_t _phaseInc{0};
 
-    static float _wavetableSin[TABLE_SIZE] __attribute__((section(".ccmram")));
-    static float _wavetableSquare[TABLE_SIZE] __attribute__((section(".ccmram")));
+    static float _wavetableA[TABLE_SIZE] __attribute__((section(".ccmram")));
+    static float _wavetableB[TABLE_SIZE] __attribute__((section(".ccmram")));
     static float _midiTable[MIDI_TABLE_SIZE] __attribute__((section(".ccmram")));
 
     Adsr _adsr;
     MoogLadder _filter;
 
     void calcPhaseInc() noexcept;
+
+    static uint8_t _currentIdx[2];
 };

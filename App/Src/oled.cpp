@@ -8,7 +8,7 @@ Oled::Oled(uint8_t address) : _addr(address << 1) {
 uint8_t Oled::init() {
     uint8_t status = 0;
     
-    // Fundamental Initialization Sequence
+    // Initialization Sequence
     status += sendCommand(0xAE); // Display OFF
     status += sendCommand(0xD5); // Set Display Clock Divide Ratio
     status += sendCommand(0x80); 
@@ -38,8 +38,7 @@ void Oled::fill(bool white) {
 }
 
 uint8_t Oled::update() {
-    // Check if the I2C bus is currently busy with OLED DMA or Codec tasks
-    if (hi2c1.State != HAL_I2C_STATE_READY) return 1;
+    if (hi2c2.State != HAL_I2C_STATE_READY) return 1;
 
     // Reset column and page pointers to start of GDDRAM
     sendCommand(0x21); // Set Column Address
@@ -85,22 +84,21 @@ void Oled::drawVLine(int x, int y1, int y2, bool color) {
 
 void Oled::drawBuffer(const float* data, uint16_t size) {
     this->fill(false); 
-    int lastY = -1;
+
+    int lastY = -1; // Keep track of the previous point's height
 
     for (uint16_t x = 0; x < size && x < 128; x++) {
-        // Use 31 as center, 31 as scale to reach 0 and 62
-        // Adding 0.5f before casting provides a "round to nearest" behavior
-        int y = 31 - static_cast<int>(data[x] * 31.0f + 0.5f);
-        
-        // Clamp to absolute bounds just in case of float precision spikes
-        if (y < 0) y = 0;
-        if (y > 63) y = 63;
+        // Normalize float to 0-63 pixel range
+        int y = 32 - static_cast<int>(data[x] * 30.0f);
 
-        if (lastY != -1) {
-            drawVLine(x, lastY, y, true);
-        } else {
+        if (lastY == -1) {
+            // First point: just draw the pixel
             drawPixel(x, y, true);
+        } else {
+            // Subsequent points: connect from lastY to current y
+            drawVLine(x, lastY, y, true);
         }
+        
         lastY = y;
     }
 }

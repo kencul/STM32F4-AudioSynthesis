@@ -2,12 +2,15 @@
 #include <cstdint>
 #include <math.h>
 #include <algorithm>
+#include "waveforms.h"
 
-float Osc::_wavetableSin[Osc::TABLE_SIZE];
-float Osc::_wavetableSquare[Osc::TABLE_SIZE];
+float Osc::_wavetableA[Osc::TABLE_SIZE];
+float Osc::_wavetableB[Osc::TABLE_SIZE];
 float Osc::_midiTable[Osc::MIDI_TABLE_SIZE];
 
-static constexpr float PI = 3.1415926535f;
+uint8_t Osc::_currentIdx[2] = { 0, 1 };
+
+//static constexpr float PI = 3.1415926535f;
 
 void Osc::init(uint16_t sr) noexcept {
     _sr = sr;
@@ -17,19 +20,8 @@ void Osc::init(uint16_t sr) noexcept {
     static bool tablesInitialized = false;
     
     if (!tablesInitialized) {
-        // Fill wavetables
-        for(uint32_t i = 0; i < TABLE_SIZE; i++) {
-            const float angle = (static_cast<float>(i)/ TABLE_SIZE) * 2.0f * PI;
-            _wavetableSin[i] = sinf(angle);
-            
-            // Band-Limited Square Table
-            float squareSum = 0.0f;
-            // 20 harmonics
-            for(int n = 1; n <= 20; n += 2) {
-                squareSum += (1.0f / n) * sinf(angle * n);
-            }
-            _wavetableSquare[i] = squareSum * (4.0f / PI);
-        }
+        std::copy(waveform_Sine, waveform_Sine + TABLE_SIZE, _wavetableA);
+        std::copy(waveform_Square, waveform_Square + TABLE_SIZE, _wavetableB);
         
         // compute midi to freq table
         for(uint32_t i = 0; i < MIDI_TABLE_SIZE; i++) {
@@ -72,17 +64,26 @@ void Osc::noteOff() noexcept {
 }
 
 void Osc::getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept {
-    // We iterate across the 'size' of the screen (e.g., 128 pixels)
-    // mapping it to our 4096-sample table
+    // Iterate across the 'size' of the screen (e.g., 128 pixels)
     float step = static_cast<float>(TABLE_SIZE) / static_cast<float>(size);
     
     for (uint16_t i = 0; i < size; ++i) {
         uint32_t idx = static_cast<uint32_t>(i * step) & (TABLE_SIZE - 1);
         
-        float s1 = _wavetableSin[idx];
-        float s2 = _wavetableSquare[idx];
+        float s1 = _wavetableA[idx];
+        float s2 = _wavetableB[idx];
         
         // Simple linear morph for the preview
         targetBuffer[i] = s1 + morph * (s2 - s1);
     }
+}
+
+void Osc::loadWaveform(uint8_t libraryIdx, uint8_t slot) noexcept {
+    if (libraryIdx >= WAVE_COUNT || slot > 1) return;
+
+    const float* source = waveLibrary[libraryIdx];
+    float* target = (slot == 0) ? _wavetableA : _wavetableB;
+
+    std::copy(source, source + TABLE_SIZE, target);
+    _currentIdx[slot] = libraryIdx;
 }
