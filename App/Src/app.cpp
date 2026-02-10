@@ -112,25 +112,27 @@ extern "C" void cpp_main() {
             ledController.updateVoices(levels);
         }
 
+        // Button Debouncing and Edge Detection
         static uint32_t lastDebounceTime = 0;
-        if (HAL_GetTick() - lastDebounceTime > 20) { // Check state every 20ms
+        static bool lastRawA = true; // High by default (Pull-up)
+        static bool lastRawB = true;
+
+        if (HAL_GetTick() - lastDebounceTime > 25) { 
             lastDebounceTime = HAL_GetTick();
 
-            // Button A
-            static bool stableStateA = true;
-            bool rawA = HAL_GPIO_ReadPin(BUTTON_A_GPIO_Port, BUTTON_A_Pin);
-            if (rawA != stableStateA) {
-                if (rawA == GPIO_PIN_RESET) cycleWaveform(0); // Pressed
-                stableStateA = rawA;
+            // Button A Logic
+            bool currentRawA = HAL_GPIO_ReadPin(BUTTON_A_GPIO_Port, BUTTON_A_Pin);
+            if (currentRawA == GPIO_PIN_RESET && lastRawA == GPIO_PIN_SET) {
+                cycleWaveform(0); // Trigger only on the "Falling Edge" (Press)
             }
+            lastRawA = currentRawA;
 
-            // Button B
-            static bool stableStateB = true;
-            bool rawB = HAL_GPIO_ReadPin(BUTTON_B_GPIO_Port, BUTTON_B_Pin);
-            if (rawB != stableStateB) {
-                if (rawB == GPIO_PIN_RESET) cycleWaveform(1); // Pressed
-                stableStateB = rawB;
+            // Button B Logic
+            bool currentRawB = HAL_GPIO_ReadPin(BUTTON_B_GPIO_Port, BUTTON_B_Pin);
+            if (currentRawB == GPIO_PIN_RESET && lastRawB == GPIO_PIN_SET) {
+                cycleWaveform(1); // Trigger only on the "Falling Edge" (Press)
             }
+            lastRawB = currentRawB;
         }
 
         handleMidi();
@@ -171,8 +173,8 @@ void handleParamChange(uint8_t index) {
     Pot& p = hardwarePots.pots[index];
     switch(index) {
         case 0: codec.setVolume(p.scaleExp(0.f, 1.f)); break;
-        case 1: voiceManager.setCutoff(p.scaleExp(20.f, 15000.f, 2.f)); break;
-        case 2: voiceManager.setResonance(p.getFloat()); break;
+        case 1: voiceManager.setCutoff(p.scaleExp(20.f, 20000.f, 2.f)); break;
+        case 2: voiceManager.setResonance(p.scaleExp(0.f, 1.f, 0.3f)); break;
         case 3: 
         {
             float newMorph = p.getFloat();
@@ -180,10 +182,10 @@ void handleParamChange(uint8_t index) {
             refreshOledWaveform();
         }
             break;
-        case 4: voiceManager.setAttack(p.scaleExp(0.f, 3.f, 2.f)); break;
-        case 5: voiceManager.setDecay(p.scaleExp(0.f, 3.f, 2.f)); break;
+        case 4: voiceManager.setAttack(p.scaleExp(0.f, 2.f, 3.f)); break;
+        case 5: voiceManager.setDecay(p.scaleExp(0.f, 2.f, 3.f)); break;
         case 6: voiceManager.setSustain(p.scaleLin(0.f, 1.f)); break;
-        case 7: voiceManager.setRelease(p.scaleExp(0.f, 3.f, 2.f)); break;
+        case 7: voiceManager.setRelease(p.scaleExp(0.f, 2.f, 3.f)); break;
     }
 }
 
@@ -201,17 +203,17 @@ void handleMidi() {
         switch (message) {
             case 0x90: // Note On
                 if (data2 > 0) {
-                    voiceManager.noteOn(data1); // data1 is MIDI note
-                    HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_SET);
+                    voiceManager.noteOn(data1, data2);
+                    //HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_SET);
                 } else {
-                    voiceManager.noteOff(data1); // Velocity 0 often means Note Off
-                    HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
+                    voiceManager.noteOff(data1);
+                    //HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
                 }
                 break;
 
             case 0x80: // Note Off
                 voiceManager.noteOff(data1);
-                HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
+                //HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
                 break;
 
             case 0xB0: // Control Change (CC)

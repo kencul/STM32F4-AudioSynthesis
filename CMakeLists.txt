@@ -56,12 +56,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/adsr.cpp
     App/Src/potBank.cpp
     App/Src/pot.cpp
-    App/Src/moogLadder.cpp
+    #App/Src/moogLadder.cpp
     App/Src/midiBridge.cpp
     App/Src/pwmLED.cpp
     App/Src/voiceManager.cpp
     App/Src/oled.cpp
     App/Src/waveforms.cpp
+    App/Src/SVF.cpp
 
 )
 

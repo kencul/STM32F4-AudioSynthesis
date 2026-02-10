@@ -25,7 +25,7 @@ public:
         }
     }
 
-    void noteOn(uint8_t note);
+    void noteOn(uint8_t note, uint8_t velocity);
     void noteOff(uint8_t note);
     void process(int16_t* buffer, uint16_t numFrames);
     

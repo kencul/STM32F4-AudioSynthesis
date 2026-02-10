@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <algorithm>
 #include "adsr.h"
-#include "moogLadder.h"
+#include "SVF.h"
 
 class Osc {
 public:
@@ -93,7 +93,7 @@ private:
     static float _midiTable[MIDI_TABLE_SIZE] __attribute__((section(".ccmram")));
 
     Adsr _adsr;
-    MoogLadder _filter;
+    SVF _filter;
 
     void calcPhaseInc() noexcept;
 

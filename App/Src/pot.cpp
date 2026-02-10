@@ -1,7 +1,7 @@
 #include "pot.h"
 #include <math.h>
 
-Pot::Pot() : _alpha(0.1f), _filteredValue(0.0f), _lastStableValue(0), _threshold(20) {}
+Pot::Pot() : _alpha(0.1f), _filteredValue(0.0f), _lastStableValue(0), _threshold(12) {}
 
 void Pot::init(float alpha, uint8_t threshold) {
     _alpha = alpha;
@@ -42,11 +42,9 @@ float Pot::scaleLin(float min, float max) const {
 }
 
 float Pot::scaleLog(float min, float max) {
-    // Standard frequency mapping
     return min * expf(logf(max / min) * getFloat());
 }
 
 float Pot::scaleExp(float min, float max, float curve) {
-    // Great for ADSR times so the "short" end of the knob has more detail
     return min + powf(getFloat(), curve) * (max - min);
 }

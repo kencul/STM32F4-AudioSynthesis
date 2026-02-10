@@ -20,8 +20,8 @@ void Osc::init(uint16_t sr) noexcept {
     static bool tablesInitialized = false;
     
     if (!tablesInitialized) {
-        std::copy(waveform_Sine, waveform_Sine + TABLE_SIZE, _wavetableA);
-        std::copy(waveform_Square, waveform_Square + TABLE_SIZE, _wavetableB);
+        loadWaveform(0, 0); 
+        loadWaveform(1, 1);
         
         // compute midi to freq table
         for(uint32_t i = 0; i < MIDI_TABLE_SIZE; i++) {

@@ -27,11 +27,11 @@ float Adsr::calcMultiplier(float timeInSeconds) const noexcept {
 }
 
 void Adsr::setAttack(float seconds) noexcept {
-    _attackTime = std::max(0.0001f, seconds);
+    _attackTime = std::max(0.001f, seconds);
 }
 
 void Adsr::setDecay(float seconds) noexcept {
-    _decayTime = std::max(0.0001f, seconds);
+    _decayTime = std::max(0.001f, seconds);
     if (_state == EnvState::DECAY) calcDecay();
 }
 
@@ -40,7 +40,7 @@ void Adsr::setSustain(float level) noexcept {
 }
 
 void Adsr::setRelease(float seconds) noexcept {
-    _releaseTime = std::max(0.0001f, seconds);
+    _releaseTime = std::max(0.001f, seconds);
     if (_state == EnvState::RELEASE) calcRelease();
 }
 

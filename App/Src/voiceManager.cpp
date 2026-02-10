@@ -1,31 +1,32 @@
 #include "voiceManager.h"
 #include "app.h"
 
-void VoiceManager::noteOn(uint8_t note) {
+void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
     _tickCount++;
     int bestVoice = -1;
     uint32_t oldestTime = 0xFFFFFFFF;
     bool foundReleased = false;
 
-    // 1. Check if this exact note is already playing (re-trigger)
+    float velGain = static_cast<float>(velocity) / 127.0f;
+
+    // Check if this exact note is already playing and retrigger
     for(int i = 0; i < MAX_VOICES; i++) {
         if(_noteMap[i] == note) {
-            _voices[i].noteOn(note, 1.f);
+            _voices[i].noteOn(note, velGain);
             _lastUsed[i] = _tickCount;
             return;
         }
     }
 
-    // 2. Search for the best candidate to take/steal
+    // Search for the best candidate to take/steal
     for(int i = 0; i < MAX_VOICES; i++) {
-        // A. Absolute priority: Voice is totally idle
+        // Voice is totally idle
         if(!_voices[i].isActive()) {
             bestVoice = i;
             break; 
         }
 
-        // B. Secondary priority: Find the oldest voice among those being released
-        // We prioritize stealing a "Released" note over an "Active" one.
+        // Prioritize stealing a "Released" note over an "Active" one.
         bool isReleasing = (_noteMap[i] == 255); 
         
         if (isReleasing && !foundReleased) {
@@ -43,11 +44,11 @@ void VoiceManager::noteOn(uint8_t note) {
         }
     }
 
-    // 3. Assign the note to the chosen voice
+    // Assign the note to the chosen voice
     if(bestVoice != -1) {
         _noteMap[bestVoice] = note;
         _lastUsed[bestVoice] = _tickCount;
-        _voices[bestVoice].noteOn(note, 1.f);
+        _voices[bestVoice].noteOn(note, velGain);
     }
 }
 
@@ -61,8 +62,6 @@ void VoiceManager::noteOff(uint8_t note) {
 }
 
 void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
-    // This is now a true constant, so the compiler will be happy.
-    // We use numFrames * 2 because we need Space for L and R for one callback
     std::fill(mixBus, mixBus + (numFrames * 2), 0.0f);
 
     for(int i = 0; i < MAX_VOICES; ++i) {
@@ -80,11 +79,9 @@ void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
     const float masterGain = (1.0f / static_cast<float>(MAX_VOICES)) * 32767.0f;
 
     for(int i = 0; i < numFrames * 2; i++) {
-        // Use std::clamp and pre-multiplied gain
         float out = mixBus[i] * masterGain;
         out = std::clamp(out, -32767.0f, 32767.0f);
 
-        // Simple cast is fast once clamped
         buffer[i] = static_cast<int16_t>(out);
     }
 }
