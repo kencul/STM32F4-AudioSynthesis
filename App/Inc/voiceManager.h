@@ -29,11 +29,10 @@ public:
     void noteOff(uint8_t note);
     void process(int16_t* buffer, uint16_t numFrames);
     
-    // Global parameter setters
+    // Parameter setters
     void setCutoff(float freq);
     void setResonance(float res);
     void setMorph(float morph);
-
     void setAttack(float seconds);
     void setDecay(float seconds);
     void setSustain(float level);
@@ -42,4 +41,8 @@ public:
     [[nodiscard]] float getVoiceLevel(uint8_t voiceIdx) const noexcept {
         return (voiceIdx < MAX_VOICES) ? _voiceLevels[voiceIdx] : 0.0f;
     }
+
+    // MIDI CC Controls
+    void setPitchBend(uint8_t lsb, uint8_t msb);
+    void setModWheel(uint8_t value);
 };

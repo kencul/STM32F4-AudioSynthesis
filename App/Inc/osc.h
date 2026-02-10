@@ -18,9 +18,11 @@ public:
     __attribute__((always_inline)) inline void process(float* __restrict__ buffer, uint16_t numFrames) noexcept {
         if (!_adsr.isActive()) return;
 
-        // Pinning variables to registers and converting division to multiplication
+        // Block-rate vibrato calculation
+        const float vibratoMod = 1.0f + (_lfoValue * _modDepth * 0.02f);
+        const uint32_t activeInc = static_cast<uint32_t>(_phaseInc * vibratoMod);
+
         uint32_t ph = _ph;
-        const uint32_t inc = _phaseInc;
         const float morph = _morph;
         const float amp = _amp;
         static constexpr float invFraction = 1.0f / 1048576.0f; 
@@ -31,7 +33,6 @@ public:
             const float fraction = static_cast<float>(ph & 0xFFFFF) * invFraction;
 
             float sample;
-            // Skip morph if possible
             if (morph <= 0.0f) {
                 sample = _wavetableA[idx1] + (_wavetableA[idx2] - _wavetableA[idx1]) * fraction;
             } else if (morph >= 1.0f) {
@@ -42,14 +43,13 @@ public:
                 sample = s1 + morph * (s2 - s1);
             }
 
-            // ADSR & Filter
             sample *= amp * _adsr.getNextSample();
             sample = _filter.process(sample);
 
             buffer[i << 1] += sample;
             buffer[(i << 1) + 1] += sample;
 
-            ph += inc;
+            ph += activeInc;
         }
         _ph = ph;
     }
@@ -69,33 +69,46 @@ public:
     void setRelease(float seconds) noexcept { _adsr.setRelease(seconds); }
     void setCutoff(float freq) noexcept { _filter.setCutoff(freq); }
     void setResonance(float res) noexcept { _filter.setResonance(res); }
+    
+    // Mod wheel depth setter
+    void setModWheel(float depth) noexcept { _modDepth = std::clamp(depth, 0.0f, 1.0f); }
 
     [[nodiscard]] bool isActive() const noexcept { return _adsr.isActive(); }
     [[nodiscard]] float getAdsrLevel() const noexcept { return _adsr.getLevel(); }
 
-    // OLED interface
     static void getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept;
-
     static void loadWaveform(uint8_t libraryIdx, uint8_t slot) noexcept;
     [[nodiscard]] static uint8_t getActiveIdx(uint8_t slot) noexcept { return _currentIdx[slot]; }
+
+    static void setPitchBend(int16_t bendValue) noexcept;
+    void applyPitchBend() noexcept;
+
+    // Global LFO tick
+    static void updateGlobalLFO() noexcept;
     
 private:
     float _freq{440.0f};
     float _amp{0.5f};
     float _morph{0.0f};
-
+    float _modDepth{0.0f};
+    
     uint32_t _ph{0};
     uint16_t _sr{48000};
     uint32_t _phaseInc{0};
-
+    
     static float _wavetableA[TABLE_SIZE] __attribute__((section(".ccmram")));
     static float _wavetableB[TABLE_SIZE] __attribute__((section(".ccmram")));
     static float _midiTable[MIDI_TABLE_SIZE] __attribute__((section(".ccmram")));
-
+    
     Adsr _adsr;
     SVF _filter;
-
     void calcPhaseInc() noexcept;
 
     static uint8_t _currentIdx[2];
+    static float _pitchBendMult;
+
+    // Global LFO members
+    static uint32_t _lfoPhase;
+    static uint32_t _lfoInc;
+    static float _lfoValue;
 };

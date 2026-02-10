@@ -192,9 +192,7 @@ void handleParamChange(uint8_t index) {
 void handleMidi() {
     MidiPacket packet;
     
-    // Process all pending packets in the buffer
     while (gMidiBuffer.pop(packet)) {
-        // packet.data[0] is the USB header (Cable Number / CIN)
         uint8_t status   = packet.data[1];
         uint8_t data1    = packet.data[2];
         uint8_t data2    = packet.data[3];
@@ -204,28 +202,27 @@ void handleMidi() {
             case 0x90: // Note On
                 if (data2 > 0) {
                     voiceManager.noteOn(data1, data2);
-                    //HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_SET);
                 } else {
                     voiceManager.noteOff(data1);
-                    //HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
                 }
                 break;
 
             case 0x80: // Note Off
                 voiceManager.noteOff(data1);
-                //HAL_GPIO_WritePin(ORANGE_LED_GPIO_Port, ORANGE_LED_Pin, GPIO_PIN_RESET);
                 break;
 
             case 0xB0: // Control Change (CC)
-                // if (data1 == 74) { // Standard Brightness/Cutoff CC
-                //     // Scale 0-127 to a useful frequency range
-                //     float cutoff = (data2 / 127.0f) * 8000.0f + 20.0f;
-                //     osc.getFilter().setCutoff(cutoff);
-                // }
-                // else if (data1 == 71) { // Standard Resonance CC
-                //     float res = (data2 / 127.0f);
-                //     osc.getFilter().setResonance(res);
-                // }
+                if (data1 == 1) { // Mod Wheel
+                    voiceManager.setModWheel(data2);
+                }
+                // Optional: Add CC 123 (All Notes Off) for safety
+                else if (data1 == 123) {
+                    for(uint8_t i = 0; i < 127; i++) voiceManager.noteOff(i);
+                }
+                break;
+
+            case 0xE0: // Pitch Bend
+                voiceManager.setPitchBend(data1, data2);
                 break;
         }
     }

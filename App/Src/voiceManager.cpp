@@ -9,7 +9,6 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
 
     float velGain = static_cast<float>(velocity) / 127.0f;
 
-    // Check if this exact note is already playing and retrigger
     for(int i = 0; i < MAX_VOICES; i++) {
         if(_noteMap[i] == note) {
             _voices[i].noteOn(note, velGain);
@@ -18,25 +17,20 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
         }
     }
 
-    // Search for the best candidate to take/steal
     for(int i = 0; i < MAX_VOICES; i++) {
-        // Voice is totally idle
         if(!_voices[i].isActive()) {
             bestVoice = i;
             break; 
         }
 
-        // Prioritize stealing a "Released" note over an "Active" one.
         bool isReleasing = (_noteMap[i] == 255); 
         
         if (isReleasing && !foundReleased) {
-            // First released voice we've found
             foundReleased = true;
             oldestTime = _lastUsed[i];
             bestVoice = i;
         } 
         else if (isReleasing == foundReleased) {
-            // If both are released OR both are active, pick the oldest
             if (_lastUsed[i] < oldestTime) {
                 oldestTime = _lastUsed[i];
                 bestVoice = i;
@@ -44,7 +38,6 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
         }
     }
 
-    // Assign the note to the chosen voice
     if(bestVoice != -1) {
         _noteMap[bestVoice] = note;
         _lastUsed[bestVoice] = _tickCount;
@@ -56,17 +49,19 @@ void VoiceManager::noteOff(uint8_t note) {
     for(int i = 0; i < MAX_VOICES; i++) {
         if(_noteMap[i] == note) {
             _voices[i].noteOff();
-            _noteMap[i] = 255; // Mark as releasing
+            _noteMap[i] = 255; 
         }
     }
 }
 
 void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
+    // Tick global LFO once per block
+    Osc::updateGlobalLFO();
+
     std::fill(mixBus, mixBus + (numFrames * 2), 0.0f);
 
     for(int i = 0; i < MAX_VOICES; ++i) {
         auto& v = _voices[i];
-        
         if(v.isActive()) {
             v.process(mixBus, numFrames);
             _voiceLevels[i] = v.getAdsrLevel();
@@ -75,15 +70,24 @@ void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
         }
     }
 
-    // Pre-calculate scaling factor
     const float masterGain = (1.0f / static_cast<float>(MAX_VOICES)) * 32767.0f;
 
     for(int i = 0; i < numFrames * 2; i++) {
         float out = mixBus[i] * masterGain;
         out = std::clamp(out, -32767.0f, 32767.0f);
-
         buffer[i] = static_cast<int16_t>(out);
     }
+}
+
+void VoiceManager::setPitchBend(uint8_t lsb, uint8_t msb) {
+    int16_t bend = (static_cast<int16_t>(msb) << 7 | lsb) - 8192;
+    Osc::setPitchBend(bend);
+    for(auto& v : _voices) v.applyPitchBend();
+}
+
+void VoiceManager::setModWheel(uint8_t value) {
+    float mod = static_cast<float>(value) / 127.0f;
+    for(auto& v : _voices) v.setModWheel(mod);
 }
 
 void VoiceManager::setCutoff(float freq) {

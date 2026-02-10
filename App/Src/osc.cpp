@@ -9,33 +9,43 @@ float Osc::_wavetableB[Osc::TABLE_SIZE];
 float Osc::_midiTable[Osc::MIDI_TABLE_SIZE];
 
 uint8_t Osc::_currentIdx[2] = { 0, 1 };
+float Osc::_pitchBendMult = 1.0f;
 
-//static constexpr float PI = 3.1415926535f;
+// Global LFO state initialization
+uint32_t Osc::_lfoPhase = 0;
+uint32_t Osc::_lfoInc = 0;
+float Osc::_lfoValue = 0.0f;
 
 void Osc::init(uint16_t sr) noexcept {
     _sr = sr;
     _filter.init(static_cast<float>(sr));
     _adsr.init(static_cast<float>(sr));
     
+    // Set LFO freq
+    _lfoInc = static_cast<uint32_t>((45.0 * 4294967296.0) / (sr / 32.0)); // Adjusted for block rate
+
     static bool tablesInitialized = false;
-    
     if (!tablesInitialized) {
         loadWaveform(0, 0); 
         loadWaveform(1, 1);
         
-        // compute midi to freq table
         for(uint32_t i = 0; i < MIDI_TABLE_SIZE; i++) {
             _midiTable[i] = 440.0f * powf(2.0f, (static_cast<float>(i) - 69.f) / 12.0f);
         }
         tablesInitialized = true;
     }
-
     calcPhaseInc();
+}
+
+void Osc::updateGlobalLFO() noexcept {
+    _lfoPhase += _lfoInc;
+    // Fast floating point sine approximation
+    _lfoValue = sinf(static_cast<float>(_lfoPhase) * 1.462918e-09f); // phase * (2PI / 2^32)
 }
     
 void Osc::calcPhaseInc() noexcept {
-    // Use double-precision constant for calculation to maintain accuracy before casting to uint32_t phase increment.
-    _phaseInc = static_cast<uint32_t>((static_cast<double>(_freq) * 4294967296.0) / _sr);
+    float finalFreq = _freq * _pitchBendMult;
+    _phaseInc = static_cast<uint32_t>((static_cast<double>(finalFreq) * 4294967296.0) / _sr);
 }
 
 void Osc::setFreq(float freq) noexcept {
@@ -49,7 +59,7 @@ void Osc::setFreq(uint32_t midiNote) noexcept {
 }
 
 void Osc::noteOn() noexcept {
-    if(!_adsr.isActive()) _ph = 0;
+    //if(!_adsr.isActive()) _ph = 0;
     _adsr.gate(true);
 }
 
@@ -64,26 +74,28 @@ void Osc::noteOff() noexcept {
 }
 
 void Osc::getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept {
-    // Iterate across the 'size' of the screen (e.g., 128 pixels)
     float step = static_cast<float>(TABLE_SIZE) / static_cast<float>(size);
-    
     for (uint16_t i = 0; i < size; ++i) {
         uint32_t idx = static_cast<uint32_t>(i * step) & (TABLE_SIZE - 1);
-        
         float s1 = _wavetableA[idx];
         float s2 = _wavetableB[idx];
-        
-        // Simple linear morph for the preview
         targetBuffer[i] = s1 + morph * (s2 - s1);
     }
 }
 
 void Osc::loadWaveform(uint8_t libraryIdx, uint8_t slot) noexcept {
     if (libraryIdx >= WAVE_COUNT || slot > 1) return;
-
     const float* source = waveLibrary[libraryIdx];
     float* target = (slot == 0) ? _wavetableA : _wavetableB;
-
     std::copy(source, source + TABLE_SIZE, target);
     _currentIdx[slot] = libraryIdx;
+}
+
+void Osc::setPitchBend(int16_t bendValue) noexcept {
+    float normalizedBend = static_cast<float>(bendValue) / 8192.0f;
+    _pitchBendMult = powf(2.0f, (normalizedBend * 2.0f) / 12.0f);
+}
+
+void Osc::applyPitchBend() noexcept {
+    calcPhaseInc();
 }
