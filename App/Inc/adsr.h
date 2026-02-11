@@ -16,7 +16,6 @@ class Adsr {
 
     Adsr() noexcept = default;
     ~Adsr() = default;
-
     
     // Interface for the Osc to interact with
     void init(float sr) noexcept;
@@ -39,7 +38,6 @@ class Adsr {
             }
         } 
         else if (_state == EnvState::DECAY) {
-            // Manual strength reduction: removed std::abs (output is always > sustain here)
             _output = _sustainLevel + (_output - _sustainLevel) * _decayMult;
             if ((_output - _sustainLevel) < 0.0001f) {
                 _output = _sustainLevel;

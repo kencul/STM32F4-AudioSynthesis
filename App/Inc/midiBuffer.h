@@ -3,7 +3,6 @@
 #include <atomic>
 #include <cstdint>
 
-// USB MIDI packets are always 4 bytes [cite: 504, 532]
 struct MidiPacket {
     uint8_t data[4];
 };

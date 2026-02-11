@@ -99,3 +99,4 @@ void Osc::setPitchBend(int16_t bendValue) noexcept {
 void Osc::applyPitchBend() noexcept {
     calcPhaseInc();
 }
+

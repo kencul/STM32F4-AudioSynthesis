@@ -22,3 +22,6 @@ static const float* const waveLibrary[] = {
 };
 
 static constexpr uint8_t WAVE_COUNT = sizeof(waveLibrary) / sizeof(waveLibrary[0]);
+
+extern const char* const waveNames[];
+

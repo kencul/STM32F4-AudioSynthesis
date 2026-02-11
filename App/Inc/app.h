@@ -35,5 +35,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 void handleParamChange(uint8_t index);
 void handleMidi();
 void cycleWaveform(uint8_t slot);
+void updateOledView();
+void playStartupSequence();
 
 #endif /* SRC_APP_H_ */

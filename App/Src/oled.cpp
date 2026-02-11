@@ -1,5 +1,7 @@
 #include "oled.h"
 #include <cstring>
+#include <cmath>
+#include "glcdfont.h"
 
 Oled::Oled(uint8_t address) : _addr(address << 1) {
     std::memset(_buffer, 0x00, sizeof(_buffer));
@@ -84,21 +86,61 @@ void Oled::drawVLine(int x, int y1, int y2, bool color) {
 
 void Oled::drawBuffer(const float* data, uint16_t size) {
     this->fill(false); 
-
-    int lastY = -1; // Keep track of the previous point's height
+    int lastY = -1;
+    
+    const int topLimit = 8;
+    const int bottomLimit = 63;
+    const float centerY = 35.5f;
+    const float amplitudeScale = 27.0f; // Leaves ~1px margin within the active area
 
     for (uint16_t x = 0; x < size && x < 128; x++) {
-        // Normalize float to 0-63 pixel range
-        int y = 32 - static_cast<int>(data[x] * 30.0f);
-
-        if (lastY == -1) {
-            // First point: just draw the pixel
-            drawPixel(x, y, true);
-        } else {
-            // Subsequent points: connect from lastY to current y
-            drawVLine(x, lastY, y, true);
-        }
+        int y = static_cast<int>(centerY - (data[x] * amplitudeScale));
         
+        if (y < topLimit) y = topLimit;
+        if (y > bottomLimit) y = bottomLimit;
+
+        if (lastY != -1) {
+            drawVLine(x, lastY, y, true);
+        } else {
+            drawPixel(x, y, true);
+        }
         lastY = y;
+    }
+}
+
+void Oled::drawLine(int x0, int y0, int x1, int y1, bool color) {
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy, e2;
+
+    while (true) {
+        drawPixel(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+void Oled::drawChar(int x, int y, char c, bool color) {
+    if (c > 127) return; 
+
+    uint16_t fontIdx = c * 5; 
+    
+    for (int col = 0; col < 5; col++) {
+        uint8_t line = font[fontIdx + col];
+        for (int row = 0; row < 7; row++) {
+            if (line & (1 << row)) {
+                drawPixel(x + col, y + row, color);
+            }
+        }
+    }
+}
+
+void Oled::drawString(int x, int y, const char* str, bool color) {
+    while (*str) {
+        drawChar(x, y, *str++, color);
+        x += 6; // 5 pixels for char + 1 pixel for spacing
+        if (x > 122) break; // Screen wrap protection
     }
 }

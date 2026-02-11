@@ -1,5 +1,10 @@
 #include "waveforms.h"
 
+const char* const waveNames[] = {
+    "SINE  ", "SAW   ", "SQUARE", "RHODES", 
+    "CLAV  ", "CHOIR ", "ACID  ", "GLASS "
+};
+
 alignas(4) const float waveform_Sine[4096] = {
     0.00000000f, 0.00153398f, 0.00306796f, 0.00460193f, 0.00613588f, 0.00766983f, 0.00920375f, 0.01073766f,
     0.01227154f, 0.01380539f, 0.01533921f, 0.01687299f, 0.01840673f, 0.01994043f, 0.02147408f, 0.02300768f,
