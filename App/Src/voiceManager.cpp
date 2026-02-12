@@ -1,5 +1,6 @@
 #include "voiceManager.h"
 #include "app.h"
+#include "constants.h"
 
 void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
     _tickCount++;
@@ -9,6 +10,7 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
 
     float velGain = static_cast<float>(velocity) / 127.0f;
 
+    // Re-trigger check
     for(int i = 0; i < MAX_VOICES; i++) {
         if(_noteMap[i] == note) {
             _voices[i].noteOn(note, velGain);
@@ -17,12 +19,15 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
         }
     }
 
+    // Find best voice: Idle > Released > Active
     for(int i = 0; i < MAX_VOICES; i++) {
+        // Absolute priority: Grab a silent voice
         if(!_voices[i].isActive()) {
             bestVoice = i;
             break; 
         }
 
+        // Grab the oldest released voice
         bool isReleasing = (_noteMap[i] == 255); 
         
         if (isReleasing && !foundReleased) {
@@ -31,6 +36,7 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
             bestVoice = i;
         } 
         else if (isReleasing == foundReleased) {
+            // If both are same status, take oldest
             if (_lastUsed[i] < oldestTime) {
                 oldestTime = _lastUsed[i];
                 bestVoice = i;
@@ -38,9 +44,12 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
         }
     }
 
+    // Dispatch note
     if(bestVoice != -1) {
         _noteMap[bestVoice] = note;
         _lastUsed[bestVoice] = _tickCount;
+        
+        // Osc internally handles immediate start vs soft-kill
         _voices[bestVoice].noteOn(note, velGain);
     }
 }
@@ -54,16 +63,16 @@ void VoiceManager::noteOff(uint8_t note) {
     }
 }
 
-void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
+void VoiceManager::process(int16_t* buffer) {
     // Tick global LFO once per block
     Osc::updateGlobalLFO();
 
-    std::fill(mixBus, mixBus + (numFrames * 2), 0.0f);
+    std::fill(mixBus, mixBus + Constants::BUFFER_SIZE, 0.0f);
 
     for(int i = 0; i < MAX_VOICES; ++i) {
         auto& v = _voices[i];
         if(v.isActive()) {
-            v.process(mixBus, numFrames);
+            v.process(mixBus);
             _voiceLevels[i] = v.getAdsrLevel();
         } else {
             _voiceLevels[i] = 0.0f;
@@ -72,7 +81,7 @@ void VoiceManager::process(int16_t* buffer, uint16_t numFrames) {
 
     const float masterGain = (1.0f / static_cast<float>(MAX_VOICES)) * 32767.0f;
 
-    for(int i = 0; i < numFrames * 2; i++) {
+    for(int i = 0; i < Constants::BUFFER_SIZE; i++) {
         float out = mixBus[i] * masterGain;
         out = std::clamp(out, -32767.0f, 32767.0f);
         buffer[i] = static_cast<int16_t>(out);

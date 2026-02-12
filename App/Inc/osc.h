@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "adsr.h"
 #include "SVF.h"
+#include "constants.h"
 
 class Osc {
 public:
@@ -13,9 +14,15 @@ public:
     Osc() noexcept = default; 
     ~Osc() = default;
 
-    void init(uint16_t sr) noexcept;
+    void init() noexcept;
     
-    __attribute__((always_inline)) inline void process(float* __restrict__ buffer, uint16_t numFrames) noexcept {
+    __attribute__((always_inline)) inline void process(float* __restrict__ buffer) noexcept {
+        // Queue next note if a note is waiting and voice is idle
+        if (!_adsr.isActive() && _pending.waiting) {
+            executeNoteOn(_pending.midiNote, _pending.velocity);
+        }
+
+        // Dont process if still idle
         if (!_adsr.isActive()) return;
 
         // Block-rate vibrato calculation
@@ -27,7 +34,7 @@ public:
         const float amp = _amp;
         static constexpr float invFraction = 1.0f / 1048576.0f; 
 
-        for (uint32_t i = 0; i < numFrames; ++i) {
+        for (uint32_t i = 0; i < Constants::NUM_FRAMES; ++i) {
             const uint32_t idx1 = ph >> 20;
             const uint32_t idx2 = (idx1 + 1) & (TABLE_SIZE - 1);
             const float fraction = static_cast<float>(ph & 0xFFFFF) * invFraction;
@@ -43,7 +50,13 @@ public:
                 sample = s1 + morph * (s2 - s1);
             }
 
-            sample *= amp * _adsr.getNextSample();
+            float env = _adsr.getNextSample();
+            if (env <= 0.0f && _pending.waiting) {
+                executeNoteOn(_pending.midiNote, _pending.velocity);
+                env = _adsr.getNextSample(); // Get the first attack sample
+           }
+
+            sample *= amp * env;
             sample = _filter.process(sample);
 
             buffer[i << 1] += sample;
@@ -76,6 +89,8 @@ public:
     [[nodiscard]] bool isActive() const noexcept { return _adsr.isActive(); }
     [[nodiscard]] float getAdsrLevel() const noexcept { return _adsr.getLevel(); }
 
+    void forceReset() noexcept;
+
     static void getMorphedPreview(float* targetBuffer, uint16_t size, float morph) noexcept;
     static void loadWaveform(uint8_t libraryIdx, uint8_t slot) noexcept;
     [[nodiscard]] static uint8_t getActiveIdx(uint8_t slot) noexcept { return _currentIdx[slot]; }
@@ -93,8 +108,9 @@ private:
     float _modDepth{0.0f};
     
     uint32_t _ph{0};
-    uint16_t _sr{48000};
     uint32_t _phaseInc{0};
+
+    void executeNoteOn(uint32_t midiNote, float amp) noexcept;
     
     static float _wavetableA[TABLE_SIZE] __attribute__((section(".ccmram")));
     static float _wavetableB[TABLE_SIZE] __attribute__((section(".ccmram")));
@@ -111,4 +127,10 @@ private:
     static uint32_t _lfoPhase;
     static uint32_t _lfoInc;
     static float _lfoValue;
+
+    struct PendingNote {
+        uint32_t midiNote;
+        float velocity;
+        bool waiting = false;
+    } _pending;
 };

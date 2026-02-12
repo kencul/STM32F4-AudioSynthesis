@@ -1,9 +1,8 @@
 #include "adsr.h"
+#include "constants.h"
 #include <cmath>
 
-void Adsr::init(float sr) noexcept {
-    _sampleRate = sr;
-    _invSampleRate = 1.0f / sr;
+void Adsr::init() noexcept {
     _state = EnvState::IDLE;
     _output = 0.0f;
 }
@@ -11,7 +10,7 @@ void Adsr::init(float sr) noexcept {
 void Adsr::gate(bool on) noexcept {
     if (on) {
         _state = EnvState::ATTACK;
-        _attackStep = (1.0f - _output) / (std::max(0.0001f, _attackTime) * _sampleRate);
+        _attackStep = (1.0f - _output) / (std::max(0.0001f, _attackTime) * Constants::SAMPLE_RATE);
     } else {
         if (_state != EnvState::IDLE) {
             _state = EnvState::RELEASE;
@@ -23,7 +22,7 @@ void Adsr::gate(bool on) noexcept {
 float Adsr::calcMultiplier(float timeInSeconds) const noexcept {
     if (timeInSeconds <= 0.0001f) return 0.0f;
     // T60 coefficient calculation
-    return expf(-6.907755f / (timeInSeconds * _sampleRate)); 
+    return expf(-6.907755f / (timeInSeconds * Constants::SAMPLE_RATE)); 
 }
 
 void Adsr::setAttack(float seconds) noexcept {
@@ -44,10 +43,23 @@ void Adsr::setRelease(float seconds) noexcept {
     if (_state == EnvState::RELEASE) calcRelease();
 }
 
+void Adsr::kill() noexcept {
+    if (_state != EnvState::IDLE) {
+        _state = EnvState::KILL;
+        float killSamples = 0.001f * Constants::SAMPLE_RATE;
+        _killStep = _output / killSamples;
+    }
+}
+
 void Adsr::calcDecay() noexcept {
     _decayMult = calcMultiplier(_decayTime);
 }
 
 void Adsr::calcRelease() noexcept {
     _releaseMult = calcMultiplier(_releaseTime);
+}
+
+void Adsr::reset() noexcept {
+    _output = 0.0f;
+    _state = EnvState::IDLE;
 }

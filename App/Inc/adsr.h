@@ -11,14 +11,15 @@ class Adsr {
         ATTACK,  // Rising to 1.0
         DECAY,   // Falling to Sustain level
         SUSTAIN, // Holding steady
-        RELEASE  // Falling to 0.0
+        RELEASE,  // Falling to 0.0
+        KILL     // Quick release for voice stealing
     };
 
     Adsr() noexcept = default;
     ~Adsr() = default;
     
     // Interface for the Osc to interact with
-    void init(float sr) noexcept;
+    void init() noexcept;
     void gate(bool on) noexcept;
 
     __attribute__((always_inline)) inline float getNextSample() noexcept {
@@ -51,6 +52,13 @@ class Adsr {
                 _state = EnvState::IDLE;
             }
         }
+        else if (_state == EnvState::KILL) {
+            _output -= _killStep;
+            if(_output <= 0.f){
+                _output = 0.0f;
+                _state = EnvState::IDLE;
+            }
+        }
 
         return _output;
     }
@@ -63,15 +71,17 @@ class Adsr {
     void setDecay(float seconds) noexcept;
     void setSustain(float level) noexcept;
     void setRelease(float seconds) noexcept;
+
+    void kill() noexcept;
+
+    void reset() noexcept;
 private:
     EnvState _state = EnvState::IDLE;
-    float _sampleRate = 48000.0f;
-    float _invSampleRate = 1.0f / 48000.0f;
     float _output = 0.0f;
 
     float _attackTime{0.01f}, _decayTime{0.1f}, _releaseTime{0.5f};
     float _sustainLevel{0.7f};
-    float _attackStep{0.0f}, _decayMult{0.0f}, _releaseMult{0.0f};
+    float _attackStep{0.0f}, _decayMult{0.0f}, _releaseMult{0.0f}, _killStep{0.0f};
 
     [[nodiscard]] float calcMultiplier(float timeInSeconds) const noexcept;
     void calcDecay() noexcept;

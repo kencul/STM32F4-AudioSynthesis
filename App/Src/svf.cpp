@@ -1,9 +1,10 @@
 #include "SVF.h"
+#include "constants.h"
 
-static constexpr float PI = 3.1415926535f;
+//static constexpr float PI = 3.1415926535f;
 
-void SVF::init(float sr) noexcept {
-    sampleRate = sr;
+void SVF::init() noexcept {
+    sampleRate = Constants::SAMPLE_RATE;
     s1 = 0.0f;
     s2 = 0.0f;
     setCutoff(1000.0f);
@@ -12,7 +13,7 @@ void SVF::init(float sr) noexcept {
 
 void SVF::setCutoff(float cutoffHz) noexcept {
     cutoffHz = std::clamp(cutoffHz, 20.0f, sampleRate * 0.49f);
-    g = std::tan(PI * cutoffHz / sampleRate);
+    g = std::tan(Constants::PI * cutoffHz / sampleRate);
     updateCoefficients();
 }
 
@@ -32,4 +33,9 @@ void SVF::updateCoefficients() noexcept {
     a1 = den;
     a2 = g * a1;
     a3 = g * a2;
+}
+
+void SVF::reset() noexcept {
+    s1 = 0.0f; 
+    s2 = 0.0f;
 }

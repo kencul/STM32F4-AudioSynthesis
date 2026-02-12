@@ -23,16 +23,15 @@
 #include "waveforms.h"
 #include "adsrVisualizer.h"
 #include "filterVisualizer.h"
-
-#define SAMPLE_RATE 48000
+#include "constants.h"
 
 Codec codec;
 PWMLed ledController;
 Oled oled;
 
-__attribute__((section(".ccmram"))) VoiceManager voiceManager(SAMPLE_RATE, BUFFER_SIZE);
+__attribute__((section(".ccmram"))) VoiceManager voiceManager;
 
-int16_t buffer[BUFFER_SIZE] = {0};
+int16_t buffer[Constants::CIRCULAR_BUFFER_SIZE] = {0};
 
 PotBank hardwarePots(&hadc1, &hadc2, GPIOE, MUX_A_Pin, GPIOE, MUX_B_Pin);
 
@@ -54,7 +53,15 @@ const uint32_t UI_TIMEOUT_MS = 1200;
 bool uiNeedsRefresh = false;
 uint8_t lastChangedIndex = 255;
 
+// CPU cycle debug
+volatile uint32_t elapsed_us = 0;
+
 extern "C" void cpp_main() {
+    // CPU cycle debug
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
     // init led controller
     if (ledController.init() != 0) {
         while(1);
@@ -65,8 +72,8 @@ extern "C" void cpp_main() {
     HAL_Delay(100);
     
     // osc init
-    voiceManager.process(buffer, NUM_FRAMES);
-    voiceManager.process(&buffer[NUM_FRAMES * 2], NUM_FRAMES);
+    voiceManager.process(buffer);
+    voiceManager.process(&buffer[Constants::BUFFER_SIZE]);
     
     if (oled.init() == 0) {
         oled.fill(true); // Fill buffer with white
@@ -75,7 +82,7 @@ extern "C" void cpp_main() {
         while(1);
     }
     // codec init
-	auto status = codec.init(buffer, BUFFER_SIZE);
+	auto status = codec.init(buffer, Constants::CIRCULAR_BUFFER_SIZE);
 	if(status){
         while(1);
 	}
@@ -159,13 +166,24 @@ extern "C" void cpp_main() {
 }
 
 extern "C" void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
-    std::fill(buffer, buffer + (NUM_FRAMES * 2), 0);
-    voiceManager.process(buffer, NUM_FRAMES);
+    std::fill(buffer, buffer + Constants::BUFFER_SIZE, 0);
+    voiceManager.process(buffer);
 }
 
 extern "C" void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    std::fill(buffer + (NUM_FRAMES * 2), buffer + (NUM_FRAMES * 4), 0);
-    voiceManager.process(&buffer[NUM_FRAMES*2], NUM_FRAMES);
+    uint32_t start_cycles = DWT->CYCCNT;
+
+    std::fill(buffer + Constants::BUFFER_SIZE, buffer + (Constants::CIRCULAR_BUFFER_SIZE), 0);
+    voiceManager.process(&buffer[Constants::BUFFER_SIZE]);
+
+    // CPU cycle debug
+    uint32_t end_cycles = DWT->CYCCNT;
+    uint32_t elapsed_cycles = end_cycles - start_cycles;
+    
+    // Convert cycles to Microseconds
+    // Formula: (Cycles / SystemCoreClock) * 1,000,000
+    elapsed_us = (elapsed_cycles * 1000000) / SystemCoreClock;
+
 }
 
 extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {

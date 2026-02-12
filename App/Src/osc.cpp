@@ -3,6 +3,7 @@
 #include <math.h>
 #include <algorithm>
 #include "waveforms.h"
+#include "constants.h"
 
 float Osc::_wavetableA[Osc::TABLE_SIZE];
 float Osc::_wavetableB[Osc::TABLE_SIZE];
@@ -16,13 +17,12 @@ uint32_t Osc::_lfoPhase = 0;
 uint32_t Osc::_lfoInc = 0;
 float Osc::_lfoValue = 0.0f;
 
-void Osc::init(uint16_t sr) noexcept {
-    _sr = sr;
-    _filter.init(static_cast<float>(sr));
-    _adsr.init(static_cast<float>(sr));
+void Osc::init() noexcept {
+    _filter.init();
+    _adsr.init();
     
     // Set LFO freq
-    _lfoInc = static_cast<uint32_t>((45.0 * 4294967296.0) / (sr / 32.0)); // Adjusted for block rate
+    _lfoInc = static_cast<uint32_t>((8.f * 4294967296.0f) / (static_cast<float>(Constants::SAMPLE_RATE) / Constants::NUM_FRAMES)); // Adjusted for block rate
 
     static bool tablesInitialized = false;
     if (!tablesInitialized) {
@@ -45,7 +45,7 @@ void Osc::updateGlobalLFO() noexcept {
     
 void Osc::calcPhaseInc() noexcept {
     float finalFreq = _freq * _pitchBendMult;
-    _phaseInc = static_cast<uint32_t>((static_cast<double>(finalFreq) * 4294967296.0) / _sr);
+    _phaseInc = static_cast<uint32_t>((static_cast<double>(finalFreq) * 4294967296.0) / Constants::SAMPLE_RATE);
 }
 
 void Osc::setFreq(float freq) noexcept {
@@ -64,9 +64,24 @@ void Osc::noteOn() noexcept {
 }
 
 void Osc::noteOn(uint32_t midiNote, float amp) noexcept {
-    _amp = amp;
+    if (!_adsr.isActive()) {
+        executeNoteOn(midiNote, amp);
+    } else {
+        _pending.midiNote = midiNote;
+        _pending.velocity = amp;
+        _pending.waiting = true;
+        
+        _adsr.kill(); 
+    }
+}
+
+void Osc::executeNoteOn(uint32_t midiNote, float amp) noexcept {
+    _ph = 0;             // Clean phase start
+    _filter.reset();     // Clear filter energy
     setFreq(midiNote);
-    noteOn();
+    setAmplitude(amp);
+    _adsr.gate(true);    // Standard ADSR start
+    _pending.waiting = false;
 }
 
 void Osc::noteOff() noexcept {
@@ -100,3 +115,8 @@ void Osc::applyPitchBend() noexcept {
     calcPhaseInc();
 }
 
+void Osc::forceReset() noexcept {
+    //_ph = 0;
+    _adsr.reset();
+    _filter.reset();
+}

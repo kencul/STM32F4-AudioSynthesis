@@ -7,9 +7,10 @@ class SVF {
 public:
     SVF() = default;
 
-    void init(float sr) noexcept;
+    void init() noexcept;
     void setCutoff(float cutoffHz) noexcept;
     void setResonance(float resonance) noexcept;
+    void reset() noexcept;
 
     [[nodiscard]] __attribute__((always_inline)) inline float process(float input) noexcept {
         float v3 = input - s2;
@@ -34,7 +35,7 @@ private:
         return x * (27.0f + x2) / (27.0f + 9.0f * x2);
     }
 
-    float sampleRate{48000.0f};
+    float sampleRate;
     float g{0.0f}, k{2.0f};
     float a1{0.0f}, a2{0.0f}, a3{0.0f};
     float s1{0.0f}, s2{0.0f};

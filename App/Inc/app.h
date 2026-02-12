@@ -12,8 +12,8 @@
 #include "i2s.h"
 #include "adc.h"
 
-#define NUM_FRAMES 256
-#define BUFFER_SIZE (NUM_FRAMES * 4)
+// #define NUM_FRAMES 256
+// #define BUFFER_SIZE (NUM_FRAMES * 4)
 
 #ifdef __cplusplus
 extern "C" {

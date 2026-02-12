@@ -1,4 +1,5 @@
 #pragma once
+#include "constants.h"
 #include "osc.h"
 #include <array>
 #include <cstdint>
@@ -11,23 +12,23 @@ private:
     uint8_t _noteMap[MAX_VOICES];
     uint32_t _lastUsed[MAX_VOICES];
     uint32_t _tickCount = 0;
-    float _sampleRate;
-    uint16_t _bufferSize;
-    float mixBus[NUM_FRAMES * 2];
+    //float _sampleRate = Constants::SAMPLE_RATE;
+    //uint16_t _bufferSize;
+    float mixBus[Constants::BUFFER_SIZE];
 
     std::array<float, MAX_VOICES> _voiceLevels;
 
 public:
-    VoiceManager(float sr, uint16_t bufferSize) : _sampleRate(sr) {
+    VoiceManager(){
         for(int i = 0; i < MAX_VOICES; i++) {
-            _voices[i].init(sr);
+            _voices[i].init();
             _noteMap[i] = 255; // 255 = Idle
         }
     }
 
     void noteOn(uint8_t note, uint8_t velocity);
     void noteOff(uint8_t note);
-    void process(int16_t* buffer, uint16_t numFrames);
+    void process(int16_t* buffer);
     
     // Parameter setters
     void setCutoff(float freq);

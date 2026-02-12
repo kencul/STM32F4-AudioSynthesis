@@ -94,3 +94,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -u _printf_float
 )
+
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -g")
