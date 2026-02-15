@@ -22,12 +22,12 @@ void Osc::init() noexcept {
     _adsr.init();
     
     // Set LFO freq
-    _lfoInc = static_cast<uint32_t>((8.f * 4294967296.0f) / (static_cast<float>(Constants::SAMPLE_RATE) / Constants::NUM_FRAMES)); // Adjusted for block rate
+    _lfoInc = static_cast<uint32_t>((Constants::LFO_FREQ * 4294967296.0f) / (static_cast<float>(Constants::SAMPLE_RATE) / Constants::NUM_FRAMES)); // Adjusted for block rate
 
     static bool tablesInitialized = false;
     if (!tablesInitialized) {
-        loadWaveform(0, 0); 
-        loadWaveform(1, 1);
+        loadWaveform(3, 0); 
+        loadWaveform(7, 1);
         
         for(uint32_t i = 0; i < MIDI_TABLE_SIZE; i++) {
             _midiTable[i] = 440.0f * powf(2.0f, (static_cast<float>(i) - 69.f) / 12.0f);

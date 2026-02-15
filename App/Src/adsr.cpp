@@ -46,7 +46,7 @@ void Adsr::setRelease(float seconds) noexcept {
 void Adsr::kill() noexcept {
     if (_state != EnvState::IDLE) {
         _state = EnvState::KILL;
-        float killSamples = 0.001f * Constants::SAMPLE_RATE;
+        float killSamples = 0.005f * Constants::SAMPLE_RATE;
         _killStep = _output / killSamples;
     }
 }

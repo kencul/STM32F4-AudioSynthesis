@@ -4,9 +4,8 @@ PotBank::PotBank(ADC_HandleTypeDef* hadcX, ADC_HandleTypeDef* hadcY, GPIO_TypeDe
     : _hadcX(hadcX), _hadcY(hadcY), _muxPortA(muxPortA), _pinA(pinA), _muxPortB(muxPortB), _pinB(pinB), _currentStep(0) {}
 
 void PotBank::init() {
-    _changedFlags.reset();
     _busy = false;
-
+    
     // initial scan of all 4 mux positions
     for (uint8_t step = 0; step < 4; step++) {
         _currentStep = step;
@@ -14,25 +13,23 @@ void PotBank::init() {
         
         // Wait for mux and analog rails to settle
         for(volatile uint32_t i=0; i<500; i++) { __asm("nop"); }
-
+        
         // single conversion on both ADCs
         HAL_ADC_Start(_hadcX);
         HAL_ADC_Start(_hadcY);
-
+        
         // Polling
         if (HAL_ADC_PollForConversion(_hadcX, 10) == HAL_OK && 
-            HAL_ADC_PollForConversion(_hadcY, 10) == HAL_OK) {
+        HAL_ADC_PollForConversion(_hadcY, 10) == HAL_OK) {
             
             pots[step].update(HAL_ADC_GetValue(_hadcX));
             pots[step + 4].update(HAL_ADC_GetValue(_hadcY));
-            
-            _changedFlags.set(step);
-            _changedFlags.set(step + 4);
         }
         
         HAL_ADC_Stop(_hadcX);
         HAL_ADC_Stop(_hadcY);
     }
+    _changedFlags.reset();
 
     // Reset step for the interrupt-based timer scan
     _currentStep = 0;

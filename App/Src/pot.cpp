@@ -1,7 +1,7 @@
 #include "pot.h"
 #include <math.h>
 
-Pot::Pot() : _alpha(0.1f), _filteredValue(0.0f), _lastStableValue(0), _threshold(18) {}
+Pot::Pot() : _alpha(0.1f), _filteredValue(-1.0f), _lastStableValue(0), _threshold(18) {}
 
 void Pot::init(float alpha, uint8_t threshold) {
     _alpha = alpha;
@@ -10,10 +10,10 @@ void Pot::init(float alpha, uint8_t threshold) {
 
 bool Pot::update(uint16_t rawValue) {
     // if this is the first ever reading, set without filtering
-    if(_filteredValue < 0){
+    if(_filteredValue < 0.f){
         _filteredValue = (float)rawValue;
         _lastStableValue = rawValue;
-        return true;
+        return false;
     } else {
         // EMA Filter: y[n] = α * x[n] + (1 - α) * y[n-1]
         _filteredValue = (_alpha * (float)rawValue) + ((1.0f - _alpha) * _filteredValue);

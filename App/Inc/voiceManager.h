@@ -4,23 +4,23 @@
 #include <array>
 #include <cstdint>
 #include "app.h"
+#include "constants.h"
 
 class VoiceManager {
 private:
-    static constexpr int MAX_VOICES = 8;
-    std::array<Osc, MAX_VOICES> _voices; 
-    uint8_t _noteMap[MAX_VOICES];
-    uint32_t _lastUsed[MAX_VOICES];
+    std::array<Osc, Constants::NUM_VOICES> _voices; 
+    uint8_t _noteMap[Constants::NUM_VOICES];
+    uint32_t _lastUsed[Constants::NUM_VOICES];
     uint32_t _tickCount = 0;
     //float _sampleRate = Constants::SAMPLE_RATE;
     //uint16_t _bufferSize;
     float mixBus[Constants::BUFFER_SIZE];
 
-    std::array<float, MAX_VOICES> _voiceLevels;
+    std::array<float, Constants::NUM_VOICES> _voiceLevels;
 
 public:
     VoiceManager(){
-        for(int i = 0; i < MAX_VOICES; i++) {
+        for(int i = 0; i < Constants::NUM_VOICES; i++) {
             _voices[i].init();
             _noteMap[i] = 255; // 255 = Idle
         }
@@ -40,7 +40,7 @@ public:
     void setRelease(float seconds);
 
     [[nodiscard]] float getVoiceLevel(uint8_t voiceIdx) const noexcept {
-        return (voiceIdx < MAX_VOICES) ? _voiceLevels[voiceIdx] : 0.0f;
+        return (voiceIdx < Constants::NUM_VOICES) ? _voiceLevels[voiceIdx] : 0.0f;
     }
 
     // MIDI CC Controls

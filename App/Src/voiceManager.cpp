@@ -1,6 +1,5 @@
 #include "voiceManager.h"
 #include "app.h"
-#include "constants.h"
 
 void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
     _tickCount++;
@@ -11,7 +10,7 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
     float velGain = static_cast<float>(velocity) / 127.0f;
 
     // Re-trigger check
-    for(int i = 0; i < MAX_VOICES; i++) {
+    for(int i = 0; i < Constants::NUM_VOICES; i++) {
         if(_noteMap[i] == note) {
             _voices[i].noteOn(note, velGain);
             _lastUsed[i] = _tickCount;
@@ -20,7 +19,7 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
     }
 
     // Find best voice: Idle > Released > Active
-    for(int i = 0; i < MAX_VOICES; i++) {
+    for(int i = 0; i < Constants::NUM_VOICES; i++) {
         // Absolute priority: Grab a silent voice
         if(!_voices[i].isActive()) {
             bestVoice = i;
@@ -55,7 +54,7 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
 }
 
 void VoiceManager::noteOff(uint8_t note) {
-    for(int i = 0; i < MAX_VOICES; i++) {
+    for(int i = 0; i < Constants::NUM_VOICES; i++) {
         if(_noteMap[i] == note) {
             _voices[i].noteOff();
             _noteMap[i] = 255; 
@@ -69,7 +68,7 @@ void VoiceManager::process(int16_t* buffer) {
 
     std::fill(mixBus, mixBus + Constants::BUFFER_SIZE, 0.0f);
 
-    for(int i = 0; i < MAX_VOICES; ++i) {
+    for(int i = 0; i < Constants::NUM_VOICES; ++i) {
         auto& v = _voices[i];
         if(v.isActive()) {
             v.process(mixBus);
@@ -79,7 +78,7 @@ void VoiceManager::process(int16_t* buffer) {
         }
     }
 
-    const float masterGain = (1.0f / static_cast<float>(MAX_VOICES)) * 32767.0f;
+    const float masterGain = Constants::VOICE_GAIN_SCALAR * 32767.0f;
 
     for(int i = 0; i < Constants::BUFFER_SIZE; i++) {
         float out = mixBus[i] * masterGain;

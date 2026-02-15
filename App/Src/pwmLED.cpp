@@ -1,4 +1,5 @@
 #include "pwmLed.h"
+#include "constants.h"
 #include <algorithm>
 
 PWMLed::PWMLed(uint8_t address) : _deviceAddr(address << 1) {}
@@ -9,6 +10,8 @@ uint8_t PWMLed::init() {
     // Wake oscillator by clearing SLEEP bit
     // Enable Auto-Increment for sequential register writes
     status += writeRegister(Reg::MODE1, Bit::AI);
+
+    status += writeRegister(Reg::MODE2, Bit::OUTDRV | Bit::OUTNE_01);
     
     // Default to all LEDs off
     status += ledAllOn(false);
@@ -38,10 +41,11 @@ uint8_t PWMLed::setChannel(uint8_t index, float brightness) {
     return 0;
 }
 
-uint8_t PWMLed::updateVoices(const std::array<float, 8>& levels) {
-    uint8_t data[32]; // 8 channels * 4 registers
+uint8_t PWMLed::updateVoices(const std::array<float, Constants::NUM_VOICES>& levels) {
+    const uint16_t transferSize = Constants::NUM_VOICES * 4;
+    uint8_t data[Constants::NUM_VOICES * 4]; // num channels * 4 registers
     
-    for (uint8_t i = 0; i < 8; ++i) {
+    for (uint8_t i = 0; i < Constants::NUM_VOICES; ++i) {
         // Apply Visual Curve (Level^2) and convert to 12-bit
         float val = std::clamp(levels[i], 0.0f, 1.0f);
         uint16_t offValue = static_cast<uint16_t>(val * val * 4095.0f);
@@ -54,7 +58,7 @@ uint8_t PWMLed::updateVoices(const std::array<float, 8>& levels) {
     }
 
     // Start at LED0_ON_L (0x06) and write all 32 bytes in one burst
-    if (HAL_I2C_Mem_Write(&hi2c1, _deviceAddr, 0x06, 1, data, 32, 10) != HAL_OK) {
+    if (HAL_I2C_Mem_Write(&hi2c1, _deviceAddr, 0x06, 1, data, transferSize, 10) != HAL_OK) {
         return 1;
     }
     return 0;

@@ -52,6 +52,7 @@ uint32_t lastInteractionTime = 0;
 const uint32_t UI_TIMEOUT_MS = 1200;
 bool uiNeedsRefresh = false;
 uint8_t lastChangedIndex = 255;
+bool isBooting;
 
 // CPU cycle debug
 volatile uint32_t elapsed_us = 0;
@@ -66,21 +67,14 @@ extern "C" void cpp_main() {
     if (ledController.init() != 0) {
         while(1);
     }
-
-    ledController.ledAllOn(true);
-    HAL_GPIO_TogglePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin);
-    HAL_Delay(100);
     
     // osc init
     voiceManager.process(buffer);
     voiceManager.process(&buffer[Constants::BUFFER_SIZE]);
     
-    if (oled.init() == 0) {
-        oled.fill(true); // Fill buffer with white
-        oled.update();   // Send to screen via DMA
-    } else {
+    if (oled.init() != 0) {
         while(1);
-    }
+    } 
     // codec init
 	auto status = codec.init(buffer, Constants::CIRCULAR_BUFFER_SIZE);
 	if(status){
@@ -89,11 +83,16 @@ extern "C" void cpp_main() {
     
     // init adc
     hardwarePots.init();
+
+    for (uint8_t i = 0; i < 8; i++) {
+        handleParamChange(i); // This sets params.volume, cutoff, etc.
+    }
     
     // Init timer for adc scanning
     HAL_TIM_Base_Start_IT(&htim4);
     
     playStartupSequence();
+    isBooting = false;
 
 	while(1){
         uint32_t currentTick = HAL_GetTick();
@@ -129,7 +128,7 @@ extern "C" void cpp_main() {
             lastLedUpdate = HAL_GetTick();
             
             // Grab all levels from VoiceManager at once
-            std::array<float, 8> levels;
+            std::array<float, Constants::NUM_VOICES> levels;
             for(uint8_t i = 0; i < 8; ++i) {
                 levels[i] = voiceManager.getVoiceLevel(i);
             }
@@ -252,7 +251,10 @@ void handleParamChange(uint8_t index) {
             break;
     }
 
-    uiNeedsRefresh = true;
+    if (!isBooting) {
+        lastInteractionTime = HAL_GetTick();
+        uiNeedsRefresh = true;
+    }
 }
 
 void handleMidi() {
@@ -394,43 +396,53 @@ void playStartupSequence() {
     int x1 = (128 - (5 * 6)) / 2;
     int x2 = (128 - (5 * 6)) / 2;
 
-    // Square and Pentagon
-    for (int sides = 4; sides <= 5; sides++) {
-        for (float angleOffset = 0; angleOffset < (M_PI * 0.4f); angleOffset += 0.05f) {
-            while(oled.isBusy());
-            oled.fill(false);
+    // // Square (4) and Pentagon (5)
+    // for (int sides = 4; sides <= 5; sides++) {
+    //     float phaseEnd = Constants::PI * 0.4f;
+    //     for (float angleOffset = 0; angleOffset < phaseEnd; angleOffset += 0.05f) {
+    //         while(oled.isBusy());
+    //         oled.fill(false);
 
-            int lastX = -1, lastY = -1, firstX = -1, firstY = -1;
-            for (int i = 0; i <= sides; i++) {
-                float phi = angleOffset + (i * 2.0f * M_PI / sides);
-                int x = centerX + static_cast<int>(cosf(phi) * maxRadius);
-                int y = centerY + static_cast<int>(sinf(phi) * maxRadius);
-                if (i == 0) { firstX = x; firstY = y; }
-                else { oled.drawLine(lastX, lastY, x, y, true); }
-                lastX = x; lastY = y;
-            }
-            oled.drawLine(lastX, lastY, firstX, firstY, true);
-            oled.update();
-            HAL_Delay(20);
-        }
-        
-        HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_SET);
-        HAL_Delay(20);
-        HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_RESET);
-    }
+    //         // Map the rotation progress (0 to 1.0) to the 8 LEDs
+    //         float progress = angleOffset / phaseEnd;
+    //         uint8_t activeLed = static_cast<uint8_t>(progress * 8.0f);
+    //         for(uint8_t i = 0; i < 8; i++) {
+    //             // Dimmer LEDs further from the "head" for a tail effect
+    //             float brightness = (i == activeLed) ? 1.0f : (i == activeLed - 1 ? 0.3f : 0.0f);
+    //             ledController.setChannel(i, brightness);
+    //         }
 
-    // Hexagon with Extended Rotation and Logo
-    for (float angleOffset = 0; angleOffset < (M_PI * 0.6f); angleOffset += 0.05f) {
+    //         int lastX = -1, lastY = -1, firstX = -1, firstY = -1;
+    //         for (int i = 0; i <= sides; i++) {
+    //             float phi = angleOffset + (i * Constants::TWO_PI / sides);
+    //             int x = centerX + static_cast<int>(cosf(phi) * maxRadius);
+    //             int y = centerY + static_cast<int>(sinf(phi) * maxRadius);
+    //             if (i == 0) { firstX = x; firstY = y; }
+    //             else { oled.drawLine(lastX, lastY, x, y, true); }
+    //             lastX = x; lastY = y;
+    //         }
+    //         oled.drawLine(lastX, lastY, firstX, firstY, true);
+    //         oled.update();
+    //         HAL_Delay(20);
+    //     }
+    // }
+
+    // Hexagon + logo
+    float finalPhaseEnd = Constants::PI * 0.6f;
+    for (float angleOffset = 0; angleOffset < finalPhaseEnd; angleOffset += 0.05f) {
         while(oled.isBusy());
         oled.fill(false);
 
-        // Draw the Logo inside the spinning hexagon
+        // All LEDs pulse brightness in sync with the spin
+        float breathe = (sinf(angleOffset * 4.0f) + 1.0f) * 0.4f; 
+        for(uint8_t i = 0; i < 8; i++) ledController.setChannel(i, breathe);
+
         oled.drawString(x1, 24, line1, true);
         oled.drawString(x2, 34, line2, true);
 
         int lastX = -1, lastY = -1, firstX = -1, firstY = -1;
         for (int i = 0; i <= 6; i++) {
-            float phi = angleOffset + (i * 2.0f * M_PI / 6);
+            float phi = angleOffset + (i * Constants::TWO_PI / 6);
             int x = centerX + static_cast<int>(cosf(phi) * maxRadius);
             int y = centerY + static_cast<int>(sinf(phi) * maxRadius);
             if (i == 0) { firstX = x; firstY = y; }
@@ -443,9 +455,9 @@ void playStartupSequence() {
         HAL_Delay(20);
     }
 
-    // Clean transition to main UI
+    // Clean transition
     ledController.ledAllOn(false);
     oled.fill(false);
     oled.update();
-    while(oled.isBusy()); // Ensure the clear reaches the screen
+    while(oled.isBusy());
 }
