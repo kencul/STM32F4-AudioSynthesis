@@ -266,3 +266,86 @@ Should (?) make getting started easier
 [Guide on how to install BSP into a STM32CubeIDE project](https://community.st.com/t5/stm32-mcus/how-to-add-a-bsp-to-an-stm32cubeide-project/ta-p/49812)
 
 [github for the components for the STM32F4.](https://github.com/STMicroelectronics/stm32f4discovery-bsp?tab=readme-ov-file) Don't download from here, but reference the bottom of the README to know which components you need to copy into your project
+
+# Developing the Synth
+
+With the complex set-up of the board configured, and with basic knowledge of the communication protocols, I moved beyond the blog post to start developing a polyphonic synth.
+
+## USB MIDI Device Conversion
+
+While the initial setup focused on I2S and I2C for the on-board codec, I have since implemented a communication layer for external control via the OTG port.
+
+* **OTG Port Transformation**: I modified the USB stack to act as a MIDI device rather than a standard audio device.
+* **MIDI Parser**: In `app.cpp`, the `handleMidi()` function pops packets from a `gMidiBuffer` and decodes status bytes for Note On (0x90), Note Off (0x80), Control Change (0xB0), and Pitch Bend (0xE0).
+* **Parameter Mapping**: MIDI CC 1 is mapped to the Mod Wheel, and CC 123 serves as a "Panic" command to silence all voices.
+
+## Polyphonic Voice Management
+
+The `VoiceManager` class handles the logic for playing multiple notes simultaneously, moving beyond a single "recipe for sound".
+
+* **Voice Allocation**: The engine manages 8 independent voices. When a MIDI Note On is received, it searches for the "best" voice by prioritizing idle voices, then released voices, and finally the oldest active voice if it needs to "steal" one.
+* **Mixing Engine**: It iterates through all active voices, calculates their audio blocks, and sums them into a `mixBus`.
+* **Global LFO**: A single global Low-Frequency Oscillator is updated once per audio block to provide synchronized modulation across all voices.
+
+## Wavetable Synthesis & Morphing
+
+I expanded the oscillator to handle complex timbres rather than just simple sine waves.
+
+* **Dual-Slot Morphing**: The engine loads two wavetables (Slot A and Slot B). A "Morph" parameter allows for real-time cross-fading between these two shapes.
+* **Wavetable Library**: I implemented a library of waveforms (Sine, Square, etc.) that can be cycled through using hardware buttons.
+* **Phase Accumulation**: It uses a `uint32_t` phase accumulator to "scrub" through wavetables at a speed determined by the MIDI note frequency.
+* **Pitch Bend**: Support for MIDI pitch bend messages uses a power-of-two formula to scale frequency accurately across semitones.
+
+## Digital Signal Processing (DSP)
+
+This section covers the implementation of the core synthesis components.
+
+### Zero-Delay State Variable Filter (SVF)
+
+The filter implementation in `svf.cpp` uses an advanced topology for better analog-style response.
+
+* **Algebraic Loop Solver**: To achieve "Zero-Delay" characteristics, the code solves the algebraic loop at each sample. It calculates a denominator (`den = 1.0f / (1.0f + g * (g + k))`) to determine coefficients `a1`, `a2`, and `a3` without relying on unit delays in the feedback path.
+* **Self-Oscillation Stability**: The damping coefficient `k` is clamped to a minimum of 0.01f to ensure the filter remains stable even at high resonance settings.
+
+### Moog Ladder Filter
+
+An alternative resonant filter based on the classic Moog design is also included.
+
+This version was initially what I wanted, as it has a interesting color, but the calculations required to use it was too lengthy for the board I am using. I had to reduce the quality of the filter a lot in order for it to be within the MCU's capability.
+
+### ADSR & "Soft-Kill" Envelope
+
+Each voice has a dedicated ADSR (Attack, Decay, Sustain, Release) state machine to prevent notes from clicking or stopping abruptly.
+
+* **EnvState::KILL**: When `Osc::noteOn()` detects a voice is already active, it triggers `_adsr.kill()` instead of a hard reset.
+* **Anti-Click Ramp**: The `kill()` function calculates a `_killStep` to quickly ramp the volume to zero over approximately 5ms.
+* **Pending Note Logic**: The oscillator stores new note data in a `_pending` struct, waits for the kill ramp to finish, and then executes the new `noteOn`.
+
+### Fixed-Point Conversion
+
+While internal synthesis uses floating-point math, the final output is clamped and converted to 16-bit signed integers for the I2S hardware.
+
+## Hardware Control & Sensing
+
+A robust system was added to interface the internal engine with the physical board.
+
+* **Potentiometer Bank (PotBank)**: Using the STM32's ADC and a multiplexer, the system reads 8 different knobs.
+* **Exponential Scaling**: Parameters like Filter Cutoff and ADSR times use exponential scaling so that knob turns feel natural to the human ear.
+* **DMA & Interrupts**: ADC scanning is triggered by timer `TIM4` and handled via interrupts to ensure the CPU isn't wasted waiting for sensor readings.
+* **Button Debouncing**: Software logic detects clean "falling edge" presses for changing waveforms, preventing "ghost" triggers.
+
+## Visuals & Feedback
+
+The UI implementation transforms the project into a "standalone instrument".
+
+* **OLED Graphics**: An SSD1306 display shows real-time information.
+* **Dynamic Views**: The screen automatically switches views (Wavetable, Filter, or ADSR) based on which parameter is being adjusted, timing out back to the wavetable view after 1.2 seconds.
+* **Wavetable Preview**: The OLED draws the actual morphed shape of the current waveform using a preview buffer.
+* **LED Voice Indicators**: An external I2C LED controller (PCA9685) displays the volume level of each of the 8 voices in real-time.
+* **Startup Sequence**: A custom animation with rotating hexagons and breathing LEDs plays upon boot.
+
+## System & Performance
+
+* **CCMRAM Optimization**: The `VoiceManager` is placed in "Core Coupled Memory" (CCMRAM) to speed up execution by avoiding bus contention.
+* **CPU Load Debugging**: I added code using the `DWT->CYCCNT` register to measure exactly how many microseconds each audio block takes to process.
+* **Circular Buffer**: Audio is processed in two halves using Half-Transfer and Transfer-Complete DMA callbacks, ensuring the codec always has data while the CPU generates the next block.

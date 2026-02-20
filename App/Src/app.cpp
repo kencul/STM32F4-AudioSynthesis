@@ -396,37 +396,6 @@ void playStartupSequence() {
     int x1 = (128 - (5 * 6)) / 2;
     int x2 = (128 - (5 * 6)) / 2;
 
-    // // Square (4) and Pentagon (5)
-    // for (int sides = 4; sides <= 5; sides++) {
-    //     float phaseEnd = Constants::PI * 0.4f;
-    //     for (float angleOffset = 0; angleOffset < phaseEnd; angleOffset += 0.05f) {
-    //         while(oled.isBusy());
-    //         oled.fill(false);
-
-    //         // Map the rotation progress (0 to 1.0) to the 8 LEDs
-    //         float progress = angleOffset / phaseEnd;
-    //         uint8_t activeLed = static_cast<uint8_t>(progress * 8.0f);
-    //         for(uint8_t i = 0; i < 8; i++) {
-    //             // Dimmer LEDs further from the "head" for a tail effect
-    //             float brightness = (i == activeLed) ? 1.0f : (i == activeLed - 1 ? 0.3f : 0.0f);
-    //             ledController.setChannel(i, brightness);
-    //         }
-
-    //         int lastX = -1, lastY = -1, firstX = -1, firstY = -1;
-    //         for (int i = 0; i <= sides; i++) {
-    //             float phi = angleOffset + (i * Constants::TWO_PI / sides);
-    //             int x = centerX + static_cast<int>(cosf(phi) * maxRadius);
-    //             int y = centerY + static_cast<int>(sinf(phi) * maxRadius);
-    //             if (i == 0) { firstX = x; firstY = y; }
-    //             else { oled.drawLine(lastX, lastY, x, y, true); }
-    //             lastX = x; lastY = y;
-    //         }
-    //         oled.drawLine(lastX, lastY, firstX, firstY, true);
-    //         oled.update();
-    //         HAL_Delay(20);
-    //     }
-    // }
-
     // Hexagon + logo
     float finalPhaseEnd = Constants::PI * 0.6f;
     for (float angleOffset = 0; angleOffset < finalPhaseEnd; angleOffset += 0.05f) {
