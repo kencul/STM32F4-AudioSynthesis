@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Kencul
+# Licensed under the MIT License
+
+
 import numpy as np
 
 TABLE_SIZE = 4096

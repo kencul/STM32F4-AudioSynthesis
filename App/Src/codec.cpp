@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2026 Kencul
+ * Licensed under the MIT License
+ */
+
+/*
  * Codec.cpp
  *
  *  Created on: Jan 27, 2026

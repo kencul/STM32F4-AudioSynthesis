@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 Kencul]
+ * Licensed under the MIT License
+ */
+
 #ifndef POT_H
 #define POT_H
 

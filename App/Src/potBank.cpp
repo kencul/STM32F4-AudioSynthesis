@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 Kencul
+ * Licensed under the MIT License
+ */
+
 #include "potBank.h"
 
 PotBank::PotBank(ADC_HandleTypeDef* hadcX, ADC_HandleTypeDef* hadcY, GPIO_TypeDef* muxPortA, uint16_t pinA, GPIO_TypeDef* muxPortB, uint16_t pinB)

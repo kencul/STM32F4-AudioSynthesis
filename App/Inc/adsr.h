@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 Kencul]
+ * Licensed under the MIT License
+ */
+
 #ifndef SRC_ADSR_H_
 #define SRC_ADSR_H_
 

@@ -1,0 +1,23 @@
+# Project Licensing
+
+This project is licensed under a split-licensing model to accommodate various third-party requirements.
+
+## Original Project Code
+
+Except where otherwise noted, all original source code in the `App/` directory and custom logic within the `Core/` directory is licensed under the **MIT License**:
+
+Copyright © 2026 Kencul
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## Third-Party Components
+
+This repository contains software components provided by STMicroelectronics. Your use of these components is governed by their respective licenses:
+
+* **STM32F4xx HAL Drivers:** These files are licensed under the **BSD-3-Clause** license. The full license text can be found in `Drivers/STM32F4xx_HAL_Driver/LICENSE.txt`.
+* **STM32 USB Device Library:** These files are licensed under the **SLA0044** (Ultimate Liberty Software License Agreement). This license requires that the software be used solely and exclusively on microcontrollers manufactured by or for STMicroelectronics. Furthermore, no part of this software may be used in a manner that subjects it to Open Source Terms. The full license text is located in `Middlewares/ST/STM32_USB_Device_Library/LICENSE.txt`.
+* **CMSIS:** These files are provided under their own license terms found in `Drivers/CMSIS/LICENSE.txt`.

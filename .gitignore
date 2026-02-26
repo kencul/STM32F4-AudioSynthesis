@@ -7,3 +7,4 @@ build/
 .settings/
 .clangd
 stm32f407.svd
+demo/

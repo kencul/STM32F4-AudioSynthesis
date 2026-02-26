@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 Kencul]
+ * Licensed under the MIT License
+ */
+
 #ifndef POTBANK_H
 #define POTBANK_H
 
