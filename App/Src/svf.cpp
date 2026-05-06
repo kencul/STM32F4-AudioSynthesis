@@ -3,7 +3,7 @@
  * Licensed under the MIT License
  */
 
-#include "SVF.h"
+#include "svf.h"
 #include "constants.h"
 
 void SVF::init() noexcept {

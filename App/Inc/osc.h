@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <algorithm>
 #include "adsr.h"
-#include "SVF.h"
+#include "svf.h"
 #include "constants.h"
 
 /*
