@@ -40,7 +40,7 @@ USB OTG ──► MIDI Parser
           │              │              │       │
        [ADSR]         [ADSR]         [ADSR]    │  ← Soft-kill on voice steal
           └─────┬──────────────────────────────┘
-                │  sum + VOICE_GAIN_SCALAR
+                │  sum ÷ 8 (normalized mix)
                 ▼
          DMA Circular Buffer  (128 samples × int16, stereo)
                 │
@@ -101,9 +101,6 @@ cmake -B build/Debug \
 
 # Build
 cmake --build build/Debug
-
-# The flashable binary is at:
-# build/Debug/basicSynth.elf
 ```
 
 Flash and debug using the [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension) (ST's official extension). The `.vscode/launch.json` is pre-configured with an ST-Link GDB server launch target. Press **F5** or use the Run and Debug panel to build, flash, and attach in one step.
@@ -112,16 +109,16 @@ Flash and debug using the [STM32 VS Code Extension](https://marketplace.visualst
 
 ## Knob Mapping
 
-| Knob | Parameter | Scale |
-|------|-----------|-------|
-| 0 | Volume | Exponential |
-| 1 | Filter Cutoff | Exponential, 20 Hz – 20 kHz |
-| 2 | Resonance | Power curve (deadzone at heel) |
-| 3 | Wavetable Morph | Linear, A → B |
-| 4 | Attack | Exponential, 0 – 2 s |
-| 5 | Decay | Exponential, 0 – 2 s |
-| 6 | Sustain | Linear, 0 – 1 |
-| 7 | Release | Exponential, 0 – 2 s |
+| Control | Parameter | Scale |
+|---------|-----------|-------|
+| Volume | Master volume | Exponential |
+| Cutoff | Filter cutoff frequency | Exponential, 20 Hz – 20 kHz |
+| Resonance | Filter resonance | Power curve (deadzone at heel) |
+| Morph | Wavetable crossfade | Linear, A → B |
+| Attack | Envelope attack time | Exponential, 0 – 2 s |
+| Decay | Envelope decay time | Exponential, 0 – 2 s |
+| Sustain | Envelope sustain level | Linear, 0 – 1 |
+| Release | Envelope release time | Exponential, 0 – 2 s |
 
 ---
 
