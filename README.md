@@ -4,6 +4,8 @@ A bare-metal, 8-voice polyphonic wavetable synthesizer built on the STM32F407G-D
 
 **[Demo Video](https://youtu.be/QuVIntSHrEU)** | **[Case Study](https://www.kenmusic.net/projects/stm32-synth)**
 
+[![Tests](https://github.com/kencul/STM32F4-AudioSynthesis/actions/workflows/tests.yml/badge.svg)](https://github.com/kencul/STM32F4-AudioSynthesis/actions/workflows/tests.yml)
+
 ![Demo](static/preview.gif)
 
 ---
