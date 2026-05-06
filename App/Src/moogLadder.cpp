@@ -3,7 +3,7 @@
  * Licensed under the MIT License
  */
 
-#include "MoogLadder.h"
+#include "moogLadder.h"
 #include <algorithm>
 
 static constexpr float PI = 3.1415926535f;

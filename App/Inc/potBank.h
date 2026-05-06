@@ -7,7 +7,7 @@
 #define POTBANK_H
 
 #include "main.h" // Required for HAL types
-#include "Pot.h"
+#include "pot.h"
 #include <bitset>
 
 class PotBank {
