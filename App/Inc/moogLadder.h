@@ -43,15 +43,9 @@ private:
 
     [[nodiscard]] inline float fast_tanh(float x) const noexcept {
         float x2 = x * x;
-        // Pade approximation
+        // Padé approximation, accurate to ~1% for |x| < 3
         return x * (27.0f + x2) / (27.0f + 9.0f * x2);
     }
-
-    // [[nodiscard]] inline float soft_clip(float x) const noexcept {
-    //     if (x > 1.0f) return 0.666f;
-    //     if (x < -1.0f) return -0.666f;
-    //     return x - (x * x * x * 0.333333f);
-    // }
 
 public:
     MoogLadder() = default;
@@ -70,31 +64,8 @@ public:
     
         for (int i = 0; i < oversampling; ++i) {
             float saturatedFeedback = fast_tanh(feedbackHistory * local_invI2v);
-            // Scaled down because whistling was a problem with resonance
             float feedback = 3.2f * local_resGain * saturatedFeedback * local_kacr;
-            // reduce whistling with soft clip
-            // feedback = soft_clip(feedback);
-            // float stageInput = input - feedback;
-
-            // Replaced full digital moog ladder implementation with a simpler version which only uses fast_tanh on the input and feedback, not each stage
             float stageInput = fast_tanh((input - feedback) * local_invI2v);
-
-            // Stage 1
-            // float t0 = fast_tanh(stageInput * local_invI2v);
-            // float t1 = fast_tanh(stage[0] * local_invI2v);
-            // stage[0] += local_k2vg * (t0 - t1);
-    
-            // // Stage 2
-            // float t2 = fast_tanh(stage[1] * local_invI2v);
-            // stage[1] += local_k2vg * (t1 - t2);
-    
-            // // Stage 3
-            // float t3 = fast_tanh(stage[2] * local_invI2v);
-            // stage[2] += local_k2vg * (t2 - t3);
-    
-            // // Stage 4
-            // float t4 = fast_tanh(stage[3] * local_invI2v);
-            // stage[3] += local_k2vg * (t3 - t4);
 
             stage[0] += local_k2vg * (stageInput - stage[0]);
             stage[1] += local_k2vg * (stage[0] - stage[1]);
