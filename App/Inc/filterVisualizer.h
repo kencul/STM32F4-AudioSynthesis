@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Kencul]
+ * Copyright (c) 2026 Kencul
  * Licensed under the MIT License
  */
 

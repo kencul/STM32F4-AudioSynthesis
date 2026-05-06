@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Kencul]
+ * Copyright (c) 2026 Kencul
  * Licensed under the MIT License
  */
 
@@ -9,6 +9,22 @@
 #include <cstdint>
 #include <algorithm>
 
+/*
+ * ADSR envelope with exponential decay/release and a soft-kill stage for
+ * click-free voice stealing.
+ *
+ * Attack is linear (additive step). Decay and release use a per-sample
+ * exponential multiplier (output *= mult) rather than a lookup table, which
+ * produces a natural, logarithmic feel and keeps the math to a single multiply
+ * per sample. The release curve is offset by -0.01 before the multiply so the
+ * exponential actually converges to zero rather than asymptoting above it.
+ *
+ * KILL state: when the VoiceManager steals an active voice, Adsr::kill() is
+ * called instead of a hard reset. It calculates a linear ramp step targeting
+ * silence in ~5ms, then transitions to IDLE. Osc holds the incoming note in a
+ * _pending struct and fires it only after KILL reaches IDLE, preventing the
+ * audible click that a hard cutoff would cause.
+ */
 class Adsr {
     public:
     enum class EnvState {

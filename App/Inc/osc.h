@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Kencul]
+ * Copyright (c) 2026 Kencul
  * Licensed under the MIT License
  */
 
@@ -11,6 +11,29 @@
 #include "SVF.h"
 #include "constants.h"
 
+/*
+ * Wavetable oscillator with dual-slot morphing, per-voice SVF, and ADSR envelope.
+ *
+ * Phase accumulation: a 32-bit accumulator increments by _phaseInc each sample.
+ * The top 12 bits index into a 4096-point wavetable; the remaining 20 bits drive
+ * linear interpolation between adjacent samples to reduce audible stepping artifacts.
+ *
+ * Wavetable morphing: two wavetable slots (A and B) are held in CCMRAM for fast
+ * access. The morph parameter cross-fades between them in real time, enabling
+ * timbral evolution without switching discontinuities.
+ *
+ * Pitch bend uses a power-of-two formula (2^(semitones/12)) applied as a multiplier
+ * to _phaseInc so that bend tracks pitch accurately across the full MIDI range.
+ *
+ * Voice stealing is handled by the KILL state in Adsr: when a new note arrives on
+ * an active voice, the envelope ramps to zero over ~5ms and stores the incoming note
+ * in _pending. The oscillator then fires the new note on the next block boundary once
+ * KILL reaches IDLE, eliminating the click that a hard reset would cause.
+ *
+ * A global LFO (shared across all voices) is updated once per audio block rather
+ * than per sample; the resulting vibrato depth is applied as a phase increment
+ * multiplier, avoiding per-sample trig calls.
+ */
 class Osc {
 public:
     static constexpr uint32_t TABLE_SIZE = 4096;

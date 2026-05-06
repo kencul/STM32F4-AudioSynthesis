@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Kencul]
+ * Copyright (c) 2026 Kencul
  * Licensed under the MIT License
  */
 
@@ -8,6 +8,21 @@
 #include <cmath>
 #include <array>
 
+/*
+ * Moog ladder filter based on Huovilainen's nonlinear model. Frequency correction
+ * uses polynomial-fitted coefficients (fcr, kacr) derived from Huovilainen's
+ * analysis to compensate for the frequency warping introduced by the bilinear
+ * transform at high cutoffs. 2x oversampling reduces aliasing from the nonlinear
+ * tanh stages.
+ *
+ * This implementation was simplified from the full Huovilainen model: per-stage
+ * tanh saturation was replaced with a single tanh on the combined input+feedback
+ * signal to reduce CPU cost. Even with this reduction, the filter consumed too
+ * much of the STM32F407's budget at 44.1kHz to leave headroom for 8-voice
+ * polyphony. The SVF (svf.h) was chosen for the production signal chain instead.
+ *
+ * Preserved here for reference and benchmarking.
+ */
 class MoogLadder {
 private:
     alignas(4) float stage[4] = {0.0f, 0.0f, 0.0f, 0.0f};

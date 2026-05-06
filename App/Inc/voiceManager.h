@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Kencul]
+ * Copyright (c) 2026 Kencul
  * Licensed under the MIT License
  */
 
@@ -11,6 +11,24 @@
 #include "app.h"
 #include "constants.h"
 
+/*
+ * 8-voice polyphonic engine. Handles MIDI-driven voice allocation, mixing,
+ * and global parameter dispatch.
+ *
+ * Voice allocation priority on noteOn:
+ *   1. Idle voice (ADSR in IDLE state)
+ *   2. Released voice (ADSR in RELEASE, not yet silent)
+ *   3. Oldest active voice (LRU via _tickCount / _lastUsed), triggering
+ *      the Adsr KILL ramp to avoid a click on the stolen voice.
+ *
+ * _noteMap[i] stores the MIDI note number owned by voice i (255 = unassigned),
+ * used on noteOff to release the correct voice without a linear search on note number.
+ *
+ * process() accumulates floating-point output from all active voices into mixBus,
+ * then clamps and converts to int16 for the I2S DMA buffer. The global LFO is
+ * ticked once per block here via Osc::updateGlobalLFO() to keep vibrato
+ * synchronized across all voices without per-sample overhead.
+ */
 class VoiceManager {
 private:
     std::array<Osc, Constants::NUM_VOICES> _voices; 
