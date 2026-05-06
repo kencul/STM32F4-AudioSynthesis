@@ -133,6 +133,33 @@ Flash and debug using the [STM32 VS Code Extension](https://marketplace.visualst
 
 ---
 
+## Tests
+
+A host-side test suite in `tests/` verifies filter math on desktop before deploying to hardware with no flash cycle required.
+
+| Test | What it checks |
+|------|---------------|
+| SVF -3 dB at cutoff | With Butterworth Q, steady-state RMS ratio at cutoff vs. passband is 0.707 ± 10% |
+| SVF self-oscillation stability | Impulse at max resonance (k clamped to 0.01) stays bounded over 10 000 samples |
+| MoogLadder bounded near resonance | Impulse at res = 0.95 stays finite and bounded over 5 000 samples |
+| MoogLadder DC stability | Constant input at res = 0 converges without drift or oscillation |
+| ADSR attack time accuracy | gate(true) reaches 1.0 within ±10% of the configured attack time |
+| ADSR kill ramp completes in ~5 ms | kill() reaches silence and IDLE within 300 samples (240 = 5 ms at 48 kHz), contract for click-free voice stealing |
+| ADSR release converges to zero | The −0.01 offset in the release formula forces the exponential to reach exactly 0.0 and transition to IDLE |
+
+```bash
+# Configure (native compiler, no ARM toolchain needed)
+cmake -B tests/build -S tests
+
+# Build
+cmake --build tests/build --config Release
+
+# Run
+ctest --test-dir tests/build -C Release -V
+```
+
+---
+
 ## Dev Notes
 
 See [DEVLOG.md](DEVLOG.md) for detailed notes on the I2C/I2S/DMA setup, CubeMX clock configuration, and the design decisions made during development.

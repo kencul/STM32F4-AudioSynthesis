@@ -43,7 +43,7 @@ class Adsr {
     void init() noexcept;
     void gate(bool on) noexcept;
 
-    __attribute__((always_inline)) inline float getNextSample() noexcept {
+    inline float getNextSample() noexcept {
         // Early exit for idle voices
         if (_state == EnvState::IDLE) return 0.0f;
 

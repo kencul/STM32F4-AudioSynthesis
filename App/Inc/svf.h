@@ -29,7 +29,7 @@ public:
     void setResonance(float resonance) noexcept;
     void reset() noexcept;
 
-    [[nodiscard]] __attribute__((always_inline)) inline float process(float input) noexcept {
+    [[nodiscard]] inline float process(float input) noexcept {
         float v3 = input - s2;
         float v1 = a1 * s1 + a2 * v3;
         float v2 = s2 + a2 * s1 + a3 * v3;

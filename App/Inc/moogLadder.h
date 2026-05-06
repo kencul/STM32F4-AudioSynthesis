@@ -55,7 +55,7 @@ public:
     void setCutoff(float cutoffHz);
     void setResonance(float resonance);
 
-    [[nodiscard]] __attribute__((always_inline)) inline float process(float input) {
+    [[nodiscard]] inline float process(float input) {
         // Copy class members to local stack variables once.
         const float local_k2vg = k2vg;
         const float local_invI2v = invI2v;

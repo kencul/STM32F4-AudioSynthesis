@@ -6,8 +6,6 @@
 #include "SVF.h"
 #include "constants.h"
 
-//static constexpr float PI = 3.1415926535f;
-
 void SVF::init() noexcept {
     sampleRate = Constants::SAMPLE_RATE;
     s1 = 0.0f;
