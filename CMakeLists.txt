@@ -62,7 +62,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/voiceManager.cpp
     App/Src/oled.cpp
     App/Src/waveforms.cpp
-    App/Src/SVF.cpp
+    App/Src/svf.cpp
 
 )
 

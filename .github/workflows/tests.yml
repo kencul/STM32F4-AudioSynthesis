@@ -12,7 +12,7 @@ jobs:
         run: cmake -B tests/build -S tests
 
       - name: Build
-        run: cmake --build tests/build
+        run: cmake --build tests/build --parallel
 
       - name: Run
-        run: ctest --test-dir tests/build -V
+        run: ctest --test-dir tests/build --output-on-failure
