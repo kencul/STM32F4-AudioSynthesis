@@ -57,7 +57,7 @@ USB OTG ──► MIDI Parser
 
 
 Hardware Control (main loop, polled)
-  TIM4 IRQ ──► ADC DMA ──► PotBank (8 knobs via CD4051 mux)
+  TIM4 IRQ ──► ADC DMA ──► PotBank (8 knobs via analog mux)
   GPIO IRQ ──► Button debounce (25 ms) ──► waveform cycle
 
 UI (main loop)

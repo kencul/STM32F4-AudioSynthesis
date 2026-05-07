@@ -347,5 +347,73 @@ The UI implementation transforms the project into a "standalone instrument".
 ## System & Performance
 
 * **CCMRAM Optimization**: The `VoiceManager` is placed in "Core Coupled Memory" (CCMRAM) to speed up execution by avoiding bus contention.
-* **CPU Load Debugging**: I added code using the `DWT->CYCCNT` register to measure exactly how many microseconds each audio block takes to process.
 * **Circular Buffer**: Audio is processed in two halves using Half-Transfer and Transfer-Complete DMA callbacks, ensuring the codec always has data while the CPU generates the next block.
+
+
+## Measuring Performance
+
+I wanted to collect hard, numerical data on the performance of the program.
+
+So, I added code using the `DWT->CYCCNT` register to measure exactly how many microseconds each audio block takes to process. 
+
+```cpp
+extern "C" void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
+    uint32_t start_cycles = DWT->CYCCNT;
+
+    std::fill(buffer + Constants::BUFFER_SIZE, buffer + (Constants::CIRCULAR_BUFFER_SIZE), 0);
+    voiceManager.process(&buffer[Constants::BUFFER_SIZE]);
+
+    // CPU cycle debug
+    uint32_t end_cycles = DWT->CYCCNT;
+    uint32_t elapsed_cycles = end_cycles - start_cycles;
+    
+    // Divide first to avoid uint32_t overflow (168 cycles/µs at 168 MHz)
+    elapsed_us = elapsed_cycles / (SystemCoreClock / 1000000);
+}
+```
+
+By using run and debug mode in VScode, I can add the `elapsed_us` variable to the watch list, and observe the number. Although the number only shows when I pause the program, it works fine to figure out the number of cycles each callback takes.
+
+I found that it takes 20µs with no voices on, and 347µs with all 8 voices. With a 64 sample buffer providing 1.333ms window, the audio callback uses 26% of the total compute time.
+
+
+Next, I wanted to measure the performance of the moogLadder and SVF filter, to compare how much resource the moogLadder implementation I have was using.
+
+```cpp
+// Filter benchmark results — read via debugger after boot, then remove
+volatile uint32_t bench_svf_cycles  = 0;
+volatile uint32_t bench_moog_cycles = 0;
+
+static void runFilterBenchmark() {
+    constexpr int   N      = 1000;
+    constexpr float CUTOFF = 1000.0f;
+    constexpr float RES    = 0.5f;
+    float sink = 0.0f;
+
+    SVF svf;
+    svf.init();
+    svf.setCutoff(CUTOFF);
+    svf.setResonance(RES);
+
+    uint32_t t0 = DWT->CYCCNT;
+    for (int i = 0; i < N; ++i)
+        sink += svf.process(0.1f);
+    bench_svf_cycles = DWT->CYCCNT - t0;
+
+    MoogLadder moog;
+    moog.init(Constants::SAMPLE_RATE);
+    moog.setCutoff(CUTOFF);
+    moog.setResonance(RES);
+
+    t0 = DWT->CYCCNT;
+    for (int i = 0; i < N; ++i)
+        sink += moog.process(0.1f);
+    bench_moog_cycles = DWT->CYCCNT - t0;
+
+    (void)sink;
+}
+```
+
+By running this function at the beginning of the `cpp_main` loop (after including the SVF and MoogLadder classes and adding back the moogladder into the cmakelists file), I used `bench_svf_cycles` and `bench_moog_cycles` in the watch list to empirically measure the performance of each filter. At 8 voices, the Moog ladder's filter cost alone totals ~838 µs, which is 62.9% of the 1.333 ms audio block budget. This leaves no headroom for oscillators or ADSR resulting in broken audio output. Even this measurement understates the real cost: the implementation uses 2× oversampling instead of the recommended 4×, and replaces per-stage tanh saturation with a single tanh to cut corners. A true Huovilainen model would be roughly 4× more expensive still.
+
+This code was removed as it was temporary just to get the data.
