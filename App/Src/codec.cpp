@@ -15,14 +15,9 @@
 #include "gpio.h"
 #include "i2s.h"
 
-Codec::Codec() {
-	// TODO Auto-generated constructor stub
+Codec::Codec() {}
 
-}
-
-Codec::~Codec() {
-	// TODO Auto-generated destructor stub
-}
+Codec::~Codec() {}
 
 uint8_t Codec::init(int16_t * buffer, size_t bufferSize) {
 	uint8_t status = 0;
