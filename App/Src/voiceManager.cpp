@@ -14,7 +14,6 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
 
     float velGain = static_cast<float>(velocity) / 127.0f;
 
-    // Re-trigger check
     for(int i = 0; i < Constants::NUM_VOICES; i++) {
         if(_noteMap[i] == note) {
             _voices[i].noteOn(note, velGain);
@@ -25,14 +24,12 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
 
     // Find best voice: Idle > Released > Active
     for(int i = 0; i < Constants::NUM_VOICES; i++) {
-        // Absolute priority: Grab a silent voice
         if(!_voices[i].isActive()) {
             bestVoice = i;
             break; 
         }
 
-        // Grab the oldest released voice
-        bool isReleasing = (_noteMap[i] == 255); 
+        bool isReleasing = (_noteMap[i] == 255);
         
         if (isReleasing && !foundReleased) {
             foundReleased = true;
@@ -40,7 +37,6 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
             bestVoice = i;
         } 
         else if (isReleasing == foundReleased) {
-            // If both are same status, take oldest
             if (_lastUsed[i] < oldestTime) {
                 oldestTime = _lastUsed[i];
                 bestVoice = i;
@@ -48,7 +44,6 @@ void VoiceManager::noteOn(uint8_t note, uint8_t velocity) {
         }
     }
 
-    // Dispatch note
     if(bestVoice != -1) {
         _noteMap[bestVoice] = note;
         _lastUsed[bestVoice] = _tickCount;

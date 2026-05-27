@@ -45,15 +45,12 @@ public:
     void init() noexcept;
     
     __attribute__((always_inline)) inline void process(float* __restrict__ buffer) noexcept {
-        // Queue next note if a note is waiting and voice is idle
         if (!_adsr.isActive() && _pending.waiting) {
             executeNoteOn(_pending.midiNote, _pending.velocity);
         }
 
-        // Dont process if still idle
         if (!_adsr.isActive()) return;
 
-        // Block-rate vibrato calculation
         const float vibratoMod = 1.0f + (_lfoValue * _modDepth * 0.02f);
         const uint32_t activeInc = static_cast<uint32_t>(_phaseInc * vibratoMod);
 
@@ -81,7 +78,7 @@ public:
             float env = _adsr.getNextSample();
             if (env <= 0.0f && _pending.waiting) {
                 executeNoteOn(_pending.midiNote, _pending.velocity);
-                env = _adsr.getNextSample(); // Get the first attack sample
+                env = _adsr.getNextSample(); // grab first attack sample immediately
            }
 
             sample *= amp * env;
@@ -111,7 +108,6 @@ public:
     void setCutoff(float freq) noexcept { _filter.setCutoff(freq); }
     void setResonance(float res) noexcept { _filter.setResonance(res); }
     
-    // Mod wheel depth setter
     void setModWheel(float depth) noexcept { _modDepth = std::clamp(depth, 0.0f, 1.0f); }
 
     [[nodiscard]] bool isActive() const noexcept { return _adsr.isActive(); }
@@ -126,7 +122,6 @@ public:
     static void setPitchBend(int16_t bendValue) noexcept;
     void applyPitchBend() noexcept;
 
-    // Global LFO tick
     static void updateGlobalLFO() noexcept;
     
 private:
@@ -151,7 +146,6 @@ private:
     static uint8_t _currentIdx[2];
     static float _pitchBendMult;
 
-    // Global LFO members
     static uint32_t _lfoPhase;
     static uint32_t _lfoInc;
     static float _lfoValue;

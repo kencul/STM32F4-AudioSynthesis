@@ -21,6 +21,6 @@ namespace Constants {
     static constexpr int CIRCULAR_BUFFER_SIZE = BUFFER_SIZE * 2;
     
     static constexpr int NUM_VOICES = 8;
-    static constexpr float VOICE_GAIN_SCALAR = 0.13f; // slightly more than 1/8
+    static constexpr float VOICE_GAIN_SCALAR = 0.13f; // slightly above 1/8: voices are rarely all at peak simultaneously, so this trades theoretical headroom for perceptual loudness
 }
 

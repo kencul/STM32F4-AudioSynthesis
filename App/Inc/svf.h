@@ -13,7 +13,6 @@
  * eliminates the one-sample delay in traditional SVF feedback paths that causes
  * phase drift at high cutoff frequencies. The algebraic loop is resolved
  * analytically per sample: den = 1 / (1 + g*(g+k)) → a1, a2, a3.
- * Implemented from filter design theory in MSc Sound Computing coursework.
  */
 class SVF {
 public:
@@ -29,11 +28,9 @@ public:
         float v1 = a1 * s1 + a2 * v3;
         float v2 = s2 + a2 * s1 + a3 * v3;
 
-        // Trapezoidal state update (2*v - s)
-        s1 = fast_tanh(2.0f * v1 - s1);
+        s1 = fast_tanh(2.0f * v1 - s1); // trapezoidal update + soft-clip on s1; s2 stays linear
         s2 = 2.0f * v2 - s2;
 
-        // Nonlinear saturation for analog warmth
         return v2;
     }
 

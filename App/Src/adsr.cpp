@@ -26,8 +26,8 @@ void Adsr::gate(bool on) noexcept {
 
 float Adsr::calcMultiplier(float timeInSeconds) const noexcept {
     if (timeInSeconds <= 0.0001f) return 0.0f;
-    // T60 coefficient calculation
-    return expf(-6.907755f / (timeInSeconds * Constants::SAMPLE_RATE)); 
+    // -ln(0.001): one-pole coefficient for a T60 decay (60 dB → amplitude ratio 0.001)
+    return expf(-6.907755f / (timeInSeconds * Constants::SAMPLE_RATE));
 }
 
 void Adsr::setAttack(float seconds) noexcept {

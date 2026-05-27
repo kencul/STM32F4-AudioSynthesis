@@ -56,7 +56,7 @@ public:
     void setResonance(float resonance);
 
     [[nodiscard]] inline float process(float input) {
-        // Copy class members to local stack variables once.
+        // Hoist to locals so the compiler avoids repeated this-ptr dereferences in the oversampling loop.
         const float local_k2vg = k2vg;
         const float local_invI2v = invI2v;
         const float local_resGain = resGain;

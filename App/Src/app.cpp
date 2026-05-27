@@ -3,13 +3,6 @@
  * Licensed under the MIT License
  */
 
-/*
- * app.cpp
- *
- *  Created on: Jan 27, 2026
- *      Author: Ken
- */
-
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -71,25 +64,22 @@ extern "C" void cpp_main() {
   ledController.init();
   oled.init();
 
-  // osc init
+  // pre-fill both DMA buffer halves before codec start
   voiceManager.process(buffer);
   voiceManager.process(&buffer[Constants::BUFFER_SIZE]);
 
-  // codec init
   auto status = codec.init(buffer, Constants::CIRCULAR_BUFFER_SIZE);
   if (status) {
     while (1)
       ; // no codec = no audio, halt
   }
 
-  // init adc
   hardwarePots.init();
 
   for (uint8_t i = 0; i < 8; i++) {
-    handleParamChange(i); // This sets params.volume, cutoff, etc.
+    handleParamChange(i);
   }
 
-  // Init timer for adc scanning
   HAL_TIM_Base_Start_IT(&htim4);
 
   playStartupSequence();
@@ -156,14 +146,14 @@ extern "C" void cpp_main() {
       // Button A Logic
       bool currentRawA = HAL_GPIO_ReadPin(BUTTON_A_GPIO_Port, BUTTON_A_Pin);
       if (currentRawA == GPIO_PIN_RESET && lastRawA == GPIO_PIN_SET) {
-        cycleWaveform(0); // Trigger only on the "Falling Edge" (Press)
+        cycleWaveform(0); // falling edge = button press (GPIO pull-up)
       }
       lastRawA = currentRawA;
 
       // Button B Logic
       bool currentRawB = HAL_GPIO_ReadPin(BUTTON_B_GPIO_Port, BUTTON_B_Pin);
       if (currentRawB == GPIO_PIN_RESET && lastRawB == GPIO_PIN_SET) {
-        cycleWaveform(1); // Trigger only on the "Falling Edge" (Press)
+        cycleWaveform(1); // falling edge = button press (GPIO pull-up)
       }
       lastRawB = currentRawB;
     }

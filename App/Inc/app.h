@@ -24,8 +24,7 @@
 extern "C" {
 #endif
 
-// This is the bridge function.
-// It is defined in app.cpp and called in main.c
+// C linkage entry point; defined in app.cpp, called from main.c
 void cpp_main(void);
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s);

@@ -27,7 +27,6 @@ uint8_t PWMLed::init() {
 uint8_t PWMLed::setChannel(uint8_t index, float brightness) {
     if (index > 15) return 1;
 
-    // Clamp brightness and convert to 12-bit (0-4095) 
     brightness = std::max(0.0f, std::min(1.0f, brightness));
     uint16_t offValue = static_cast<uint16_t>(brightness * 4095);
 

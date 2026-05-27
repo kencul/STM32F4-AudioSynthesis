@@ -15,8 +15,7 @@
  *
  * Attack is linear (additive step). Decay and release use a per-sample
  * exponential multiplier (output *= mult) rather than a lookup table, which
- * produces a natural, logarithmic feel and keeps the math to a single multiply
- * per sample. The release curve is offset by -0.01 before the multiply so the
+ * approximates human loudness perception and costs one multiply per sample. The release curve is offset by -0.01 before the multiply so the
  * exponential actually converges to zero rather than asymptoting above it.
  *
  * KILL state: when the VoiceManager steals an active voice, Adsr::kill() is
@@ -39,12 +38,10 @@ class Adsr {
     Adsr() noexcept = default;
     ~Adsr() = default;
     
-    // Interface for the Osc to interact with
     void init() noexcept;
     void gate(bool on) noexcept;
 
     inline float getNextSample() noexcept {
-        // Early exit for idle voices
         if (_state == EnvState::IDLE) return 0.0f;
 
         if (_state == EnvState::SUSTAIN) {
@@ -87,7 +84,6 @@ class Adsr {
     [[nodiscard]] bool isActive() const noexcept { return _state != EnvState::IDLE; }
     [[nodiscard]] float getLevel() const noexcept { return _output; }
     
-    // Setters for  parameters
     void setAttack(float seconds) noexcept;
     void setDecay(float seconds) noexcept;
     void setSustain(float level) noexcept;

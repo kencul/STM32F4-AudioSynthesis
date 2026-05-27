@@ -18,13 +18,11 @@ void PotBank::init() {
         
         // Wait for mux and analog rails to settle
         for(volatile uint32_t i=0; i<500; i++) { __asm("nop"); }
-        
-        // single conversion on both ADCs
+
         HAL_ADC_Start(_hadcX);
         HAL_ADC_Start(_hadcY);
-        
-        // Polling
-        if (HAL_ADC_PollForConversion(_hadcX, 10) == HAL_OK && 
+
+        if (HAL_ADC_PollForConversion(_hadcX, 10) == HAL_OK &&
         HAL_ADC_PollForConversion(_hadcY, 10) == HAL_OK) {
             
             pots[step].update(HAL_ADC_GetValue(_hadcX));
@@ -45,17 +43,14 @@ void PotBank::handleInterrupt(ADC_HandleTypeDef* hadc) {
     // Synchronize on the second ADC finishing
     if (hadc->Instance == _hadcY->Instance) {
         
-        // Update Pot in X-Bank (0-3)
         if (pots[_currentStep].update(HAL_ADC_GetValue(_hadcX))) {
             _changedFlags.set(_currentStep);
         }
 
-        // Update Pot in Y-Bank (4-7)
         if (pots[_currentStep + 4].update(HAL_ADC_GetValue(_hadcY))) {
             _changedFlags.set(_currentStep + 4);
         }
 
-        // Advance Multiplexer
         _currentStep = (_currentStep + 1) % 4;
         if (_currentStep != 0) {
             applyMuxAddress();

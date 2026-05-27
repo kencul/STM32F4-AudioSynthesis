@@ -17,7 +17,6 @@ float Osc::_midiTable[Osc::MIDI_TABLE_SIZE];
 uint8_t Osc::_currentIdx[2] = { 0, 1 };
 float Osc::_pitchBendMult = 1.0f;
 
-// Global LFO state initialization
 uint32_t Osc::_lfoPhase = 0;
 uint32_t Osc::_lfoInc = 0;
 float Osc::_lfoValue = 0.0f;
@@ -26,8 +25,8 @@ void Osc::init() noexcept {
     _filter.init();
     _adsr.init();
     
-    // Set LFO freq
-    _lfoInc = static_cast<uint32_t>((Constants::LFO_FREQ * 4294967296.0f) / (static_cast<float>(Constants::SAMPLE_RATE) / Constants::NUM_FRAMES)); // Adjusted for block rate
+    // LFO updated once per block, so increment is scaled by block size to maintain correct frequency
+    _lfoInc = static_cast<uint32_t>((Constants::LFO_FREQ * 4294967296.0f) / (static_cast<float>(Constants::SAMPLE_RATE) / Constants::NUM_FRAMES));
 
     static bool tablesInitialized = false;
     if (!tablesInitialized) {
@@ -44,8 +43,7 @@ void Osc::init() noexcept {
 
 void Osc::updateGlobalLFO() noexcept {
     _lfoPhase += _lfoInc;
-    // Fast floating point sine approximation
-    _lfoValue = sinf(static_cast<float>(_lfoPhase) * 1.462918e-09f); // phase * (2PI / 2^32)
+    _lfoValue = sinf(static_cast<float>(_lfoPhase) * 1.462918e-09f); // 2π / 2³²: converts 32-bit phase to radians
 }
     
 void Osc::calcPhaseInc() noexcept {
@@ -64,7 +62,6 @@ void Osc::setFreq(uint32_t midiNote) noexcept {
 }
 
 void Osc::noteOn() noexcept {
-    //if(!_adsr.isActive()) _ph = 0;
     _adsr.gate(true);
 }
 
@@ -81,11 +78,11 @@ void Osc::noteOn(uint32_t midiNote, float amp) noexcept {
 }
 
 void Osc::executeNoteOn(uint32_t midiNote, float amp) noexcept {
-    _ph = 0;             // Clean phase start
-    _filter.reset();     // Clear filter energy
+    _ph = 0;
+    _filter.reset();
     setFreq(midiNote);
     setAmplitude(amp);
-    _adsr.gate(true);    // Standard ADSR start
+    _adsr.gate(true);
     _pending.waiting = false;
 }
 
@@ -121,7 +118,6 @@ void Osc::applyPitchBend() noexcept {
 }
 
 void Osc::forceReset() noexcept {
-    //_ph = 0;
     _adsr.reset();
     _filter.reset();
 }

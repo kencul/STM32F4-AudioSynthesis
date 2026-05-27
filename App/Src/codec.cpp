@@ -24,7 +24,7 @@ uint8_t Codec::init(int16_t * buffer, size_t bufferSize) {
 	HAL_GPIO_WritePin(CODEC_RESET_GPIO_Port, CODEC_RESET_Pin, GPIO_PIN_SET);
 	// Address 4: Power Control 2, Data: 10101111 (Headphone on always, speakers off always)
 	status += write(0x04, 0xaf);
-	// Address 6: Interface Control 2, Data: 00000111 (Slave mode, normal polarity (doesn't matter), DSP mode off, I2S Format, 16bit data)
+	// Address 6: Interface Control 2, Data: 00000111 (Slave mode, normal polarity, DSP mode off, I2S Format, 16bit data)
 	status += write(0x06, 0x07);
 	
 	status += setVolume(0.7f);
@@ -74,12 +74,8 @@ uint8_t Codec::setVolume(float volume) {
 
 	if(lastVolume == regVal) return 0;
 	lastVolume = regVal;
-	//Freeze the registers so the changes don't apply yet
 	uint8_t status = 0;
-	// status += write(0x0E, 0x03);
-    // status += write(0x0E, 0x03 | 0x08);
     status += write(0x22, regVal); // Headphone Left
     status += write(0x23, regVal); // Headphone Right
-	// status += write(0x0E, 0x03);
     return status;
 }

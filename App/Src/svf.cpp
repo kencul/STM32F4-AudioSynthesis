@@ -16,7 +16,7 @@ void SVF::init() noexcept {
 
 void SVF::setCutoff(float cutoffHz) noexcept {
     cutoffHz = std::clamp(cutoffHz, 20.0f, sampleRate * 0.49f);
-    g = std::tan(Constants::PI * cutoffHz / sampleRate);
+    g = std::tan(Constants::PI * cutoffHz / sampleRate); // bilinear prewarping: maps analog cutoff to digital frequency exactly
     updateCoefficients();
 }
 

@@ -37,6 +37,7 @@ public:
             float k = (1.0f - resonance);
             if (k < 0.01f) k = 0.01f;
 
+            // 2nd-order LP transfer function magnitude: |H(f)| = 1 / sqrt((1 - r²)² + (r·k)²)
             float magnitude = 1.0f / sqrtf(powf(1.0f - r2, 2.0f) + powf(r * k, 2.0f));
 
             int y;
