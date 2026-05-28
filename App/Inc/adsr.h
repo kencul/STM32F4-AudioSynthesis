@@ -3,8 +3,7 @@
  * Licensed under the MIT License
  */
 
-#ifndef SRC_ADSR_H_
-#define SRC_ADSR_H_
+#pragma once
 
 #include <cstdint>
 #include <algorithm>
@@ -104,4 +103,3 @@ private:
     void calcDecay() noexcept;
     void calcRelease() noexcept;
 };
-#endif
